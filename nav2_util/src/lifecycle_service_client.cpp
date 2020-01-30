@@ -23,6 +23,7 @@
 
 using nav2_util::generate_internal_node;
 using std::chrono::seconds;
+using namespace std::chrono_literals;
 using std::make_shared;
 using std::string;
 
@@ -58,7 +59,7 @@ void LifecycleServiceClient::change_state(
 bool LifecycleServiceClient::change_state(
   std::uint8_t transition)
 {
-  change_state_.wait_for_service();
+  //change_state_.wait_for_service(std::chrono::nanoseconds(50000000));
   auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
   auto response = std::make_shared<lifecycle_msgs::srv::ChangeState::Response>();
   request->transition.id = transition;
