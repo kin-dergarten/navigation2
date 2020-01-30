@@ -186,7 +186,7 @@ void ObstacleLayer::onInitialize()
       global_frame_.c_str(), expected_update_rate, observation_keep_time);
 
     rmw_qos_profile_t custom_qos_profile = rmw_qos_profile_sensor_data;
-    custom_qos_profile.depth = 50;
+    custom_qos_profile.depth = 1;
 
     // create a callback for the topic
     if (data_type == "LaserScan") {
@@ -196,7 +196,7 @@ void ObstacleLayer::onInitialize()
 
       std::shared_ptr<tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>> filter(
         new tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>(
-          *sub, *tf_, global_frame_, 50, rclcpp_node_));
+          *sub, *tf_, global_frame_, custom_qos_profile.depth, rclcpp_node_));
 
       if (inf_is_valid) {
         filter->registerCallback(std::bind(
@@ -226,7 +226,7 @@ void ObstacleLayer::onInitialize()
 
       std::shared_ptr<tf2_ros::MessageFilter<sensor_msgs::msg::PointCloud2>> filter(
         new tf2_ros::MessageFilter<sensor_msgs::msg::PointCloud2>(
-          *sub, *tf_, global_frame_, 50, rclcpp_node_));
+          *sub, *tf_, global_frame_, custom_qos_profile.depth, rclcpp_node_));
 
       filter->registerCallback(std::bind(
           &ObstacleLayer::pointCloud2Callback, this, std::placeholders::_1,
