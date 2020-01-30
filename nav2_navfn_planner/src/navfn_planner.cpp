@@ -149,7 +149,7 @@ NavfnPlanner::makePlan(
   double wx = start.position.x;
   double wy = start.position.y;
 
-  RCLCPP_DEBUG(node_->get_logger(), "Making plan from (%.2f,%.2f) to (%.2f,%.2f)",
+  RCLCPP_INFO(node_->get_logger(), "Making plan from (%.2f,%.2f) to (%.2f,%.2f)",
     start.position.x, start.position.y, goal.position.x, goal.position.y);
 
   unsigned int mx, my;
