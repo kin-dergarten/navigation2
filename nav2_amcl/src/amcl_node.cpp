@@ -353,10 +353,10 @@ AmclNode::on_shutdown(const rclcpp_lifecycle::State & /*state*/)
 void
 AmclNode::parameterEventCallback(const rcl_interfaces::msg::ParameterEvent::SharedPtr & /*event*/)
 {
-  initParameters();
-  initMessageFilters();
-  initOdometry();
-  initParticleFilter();
+//  initParameters();
+//  initMessageFilters();
+//  initOdometry();
+//  initParticleFilter();
 }
 
 void
@@ -1198,7 +1198,7 @@ AmclNode::initPubSub()
     std::bind(&AmclNode::initialPoseReceived, this, std::placeholders::_1));
 
   map_sub_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
-    "map", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable(),
+    "map", rclcpp::QoS(rclcpp::KeepLast(10)).transient_local().reliable(),
     std::bind(&AmclNode::mapReceived, this, std::placeholders::_1));
 
   RCLCPP_INFO(get_logger(), "Subscribed to map topic.");
