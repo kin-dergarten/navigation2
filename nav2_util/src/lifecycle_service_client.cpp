@@ -59,7 +59,8 @@ void LifecycleServiceClient::change_state(
 bool LifecycleServiceClient::change_state(
   std::uint8_t transition)
 {
-  //change_state_.wait_for_service(std::chrono::nanoseconds(50000000));
+  using namespace std::chrono_literals;
+  change_state_.wait_for_service(1s);
   auto request = std::make_shared<lifecycle_msgs::srv::ChangeState::Request>();
   auto response = std::make_shared<lifecycle_msgs::srv::ChangeState::Response>();
   request->transition.id = transition;
