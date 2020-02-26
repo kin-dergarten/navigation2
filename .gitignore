@@ -46,3 +46,6 @@ __pycache__/
 *.py[cod]
 
 sphinx_doc/_build
+
+cmake-build-debug/
+.idea/
