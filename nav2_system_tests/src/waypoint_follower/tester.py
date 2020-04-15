@@ -37,6 +37,7 @@ class WaypointFollowerTest(Node):
         self.initial_pose_pub = self.create_publisher(PoseWithCovarianceStamped,
                                                       'initialpose', 10)
         self.initial_pose_received = False
+        self.goal_handle = None
 
         pose_qos = QoSProfile(
           durability=QoSDurabilityPolicy.RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL,
@@ -71,7 +72,7 @@ class WaypointFollowerTest(Node):
             msg.pose.orientation.w = 1.0
             self.waypoints.append(msg)
 
-    def run(self):
+    def run(self, block):
         if not self.waypoints:
             rclpy.error_msg('Did not set valid waypoints before running test!')
             return False
@@ -84,19 +85,30 @@ class WaypointFollowerTest(Node):
 
         self.info_msg('Sending goal request...')
         send_goal_future = self.action_client.send_goal_async(action_request)
-        rclpy.spin_until_future_complete(self, send_goal_future)
-        goal_handle = send_goal_future.result()
-        if not goal_handle.accepted:
+        try:
+            rclpy.spin_until_future_complete(self, send_goal_future)
+            self.goal_handle = send_goal_future.result()
+        except Exception as e:
+            self.error_msg('Service call failed %r' % (e,))
+
+        if not self.goal_handle.accepted:
             self.error_msg('Goal rejected')
             return False
 
         self.info_msg('Goal accepted')
-        get_result_future = goal_handle.get_result_async()
+        if not block:
+            return True
+
+        get_result_future = self.goal_handle.get_result_async()
 
         self.info_msg("Waiting for 'FollowWaypoints' action to complete")
-        rclpy.spin_until_future_complete(self, get_result_future)
-        status = get_result_future.result().status
-        result = get_result_future.result().result
+        try:
+            rclpy.spin_until_future_complete(self, get_result_future)
+            status = get_result_future.result().status
+            result = get_result_future.result().result
+        except Exception as e:
+            self.error_msg('Service call failed %r' % (e,))
+
         if status != GoalStatus.STATUS_SUCCEEDED:
             self.info_msg('Goal failed with status code: {0}'.format(status))
             return False
@@ -120,8 +132,8 @@ class WaypointFollowerTest(Node):
         req = ManageLifecycleNodes.Request()
         req.command = ManageLifecycleNodes.Request().SHUTDOWN
         future = mgr_client.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
         try:
+            rclpy.spin_until_future_complete(self, future)
             future.result()
         except Exception as e:
             self.error_msg('Service call failed %r' % (e,))
@@ -134,20 +146,24 @@ class WaypointFollowerTest(Node):
         req = ManageLifecycleNodes.Request()
         req.command = ManageLifecycleNodes.Request().SHUTDOWN
         future = mgr_client.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
         try:
+            rclpy.spin_until_future_complete(self, future)
             future.result()
         except Exception as e:
             self.error_msg('Service call failed %r' % (e,))
 
+    def cancel_goal(self):
+        cancel_future = self.goal_handle.cancel_goal_async()
+        rclpy.spin_until_future_complete(self, cancel_future)
+
     def info_msg(self, msg: str):
-        self.get_logger().info('\033[1;37;44m' + msg + '\033[0m')
+        self.get_logger().info(msg)
 
     def warn_msg(self, msg: str):
-        self.get_logger().warn('\033[1;37;43m' + msg + '\033[0m')
+        self.get_logger().warn(msg)
 
     def error_msg(self, msg: str):
-        self.get_logger().error('\033[1;37;41m' + msg + '\033[0m')
+        self.get_logger().error(msg)
 
 
 def main(argv=sys.argv[1:]):
@@ -171,12 +187,35 @@ def main(argv=sys.argv[1:]):
         test.info_msg('Waiting for amcl_pose to be received')
         rclpy.spin_once(test, timeout_sec=1.0)  # wait for poseCallback
 
-    result = test.run()
+    result = test.run(True)
+    assert result
+
+    # preempt with new point
+    test.setWaypoints([starting_pose])
+    result = test.run(False)
+    time.sleep(2)
+    test.setWaypoints([wps[1]])
+    result = test.run(False)
+
+    # cancel
+    time.sleep(2)
+    test.cancel_goal()
+
+    # a failure case
+    time.sleep(2)
+    test.setWaypoints([[100.0, 100.0]])
+    result = test.run(True)
+    assert not result
+    result = not result
+
     test.shutdown()
+    test.info_msg('Done Shutting Down.')
 
     if not result:
+        test.info_msg('Exiting failed')
         exit(1)
     else:
+        test.info_msg('Exiting passed')
         exit(0)
 
 

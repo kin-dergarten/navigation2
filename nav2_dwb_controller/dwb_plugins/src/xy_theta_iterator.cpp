@@ -33,19 +33,24 @@
  */
 
 #include "dwb_plugins/xy_theta_iterator.hpp"
+
+#include <cmath>
 #include <memory>
 #include <string>
+
 #include "nav_2d_utils/parameters.hpp"
 #include "nav2_util/node_utils.hpp"
+
+#define EPSILON 1E-5
 
 namespace dwb_plugins
 {
 void XYThetaIterator::initialize(
   const nav2_util::LifecycleNode::SharedPtr & nh,
-  KinematicParameters::Ptr kinematics,
+  KinematicsHandler::Ptr kinematics,
   const std::string & plugin_name)
 {
-  kinematics_ = kinematics;
+  kinematics_handler_ = kinematics;
 
   nav2_util::declare_parameter_if_not_declared(
     nh,
@@ -66,27 +71,48 @@ void XYThetaIterator::startNewIteration(
   const nav_2d_msgs::msg::Twist2D & current_velocity,
   double dt)
 {
+  KinematicParameters kinematics = kinematics_handler_->getKinematics();
   x_it_ = std::make_shared<OneDVelocityIterator>(
     current_velocity.x,
-    kinematics_->getMinX(), kinematics_->getMaxX(),
-    kinematics_->getAccX(), kinematics_->getDecelX(), dt, vx_samples_);
+    kinematics.getMinX(), kinematics.getMaxX(),
+    kinematics.getAccX(), kinematics.getDecelX(),
+    dt, vx_samples_);
   y_it_ = std::make_shared<OneDVelocityIterator>(
     current_velocity.y,
-    kinematics_->getMinY(), kinematics_->getMaxY(),
-    kinematics_->getAccY(), kinematics_->getDecelY(), dt, vy_samples_);
+    kinematics.getMinY(), kinematics.getMaxY(),
+    kinematics.getAccY(), kinematics.getDecelY(),
+    dt, vy_samples_);
   th_it_ = std::make_shared<OneDVelocityIterator>(
     current_velocity.theta,
-    kinematics_->getMinTheta(), kinematics_->getMaxTheta(),
-    kinematics_->getAccTheta(), kinematics_->getDecelTheta(),
+    kinematics.getMinTheta(), kinematics.getMaxTheta(),
+    kinematics.getAccTheta(), kinematics.getDecelTheta(),
     dt, vtheta_samples_);
   if (!isValidVelocity()) {
     iterateToValidVelocity();
   }
 }
 
+bool XYThetaIterator::isValidSpeed(double x, double y, double theta)
+{
+  KinematicParameters kinematics = kinematics_handler_->getKinematics();
+  double vmag_sq = x * x + y * y;
+  if (kinematics.getMaxSpeedXY() >= 0.0 && vmag_sq > kinematics.getMaxSpeedXY_SQ() + EPSILON) {
+    return false;
+  }
+  if (kinematics.getMinSpeedXY() >= 0.0 && vmag_sq + EPSILON < kinematics.getMinSpeedXY_SQ() &&
+    kinematics.getMinSpeedTheta() >= 0.0 && fabs(theta) + EPSILON < kinematics.getMinSpeedTheta())
+  {
+    return false;
+  }
+  if (vmag_sq == 0.0 && th_it_->getVelocity() == 0.0) {
+    return false;
+  }
+  return true;
+}
+
 bool XYThetaIterator::isValidVelocity()
 {
-  return kinematics_->isValidSpeed(
+  return isValidSpeed(
     x_it_->getVelocity(), y_it_->getVelocity(),
     th_it_->getVelocity());
 }
@@ -95,7 +121,6 @@ bool XYThetaIterator::hasMoreTwists()
 {
   return x_it_ && !x_it_->isFinished();
 }
-
 
 nav_2d_msgs::msg::Twist2D XYThetaIterator::nextTwist()
 {
