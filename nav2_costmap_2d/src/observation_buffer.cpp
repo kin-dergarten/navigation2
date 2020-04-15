@@ -95,11 +95,12 @@ bool ObservationBuffer::setGlobalFrame(const std::string new_global_frame)
       origin.point = obs.origin_;
 
       // we need to transform the origin of the observation to the new global frame
-      tf2_buffer_.transform(origin, origin, new_global_frame);
+      tf2_buffer_.transform(origin, origin, new_global_frame, tf2::durationFromSec(tf_tolerance_));
       obs.origin_ = origin.point;
 
       // we also need to transform the cloud of the observation to the new global frame
-      tf2_buffer_.transform(*(obs.cloud_), *(obs.cloud_), new_global_frame);
+      tf2_buffer_.transform(
+        *(obs.cloud_), *(obs.cloud_), new_global_frame, tf2::durationFromSec(tf_tolerance_));
     } catch (tf2::TransformException & ex) {
       RCLCPP_ERROR(
         rclcpp::get_logger(
@@ -233,7 +234,7 @@ void ObservationBuffer::purgeStaleObservations()
       Observation & obs = *obs_it;
       // check if the observation is out of date... and if it is,
       // remove it and those that follow from the list
-      if ((last_updated_ - obs.cloud_->header.stamp) > observation_keep_time_) {
+      if ((nh_->now() - obs.cloud_->header.stamp) > observation_keep_time_) {
         observation_list_.erase(obs_it, observation_list_.end());
         return;
       }
