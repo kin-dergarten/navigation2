@@ -59,7 +59,7 @@ class NavTester(Node):
         self.initial_pose_received = False
         self.initial_pose = initial_pose
         self.goal_pose = goal_pose
-        self.action_client = ActionClient(self, NavigateToPose, 'NavigateToPose')
+        self.action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
 
     def info_msg(self, msg: str):
         self.get_logger().info('\033[1;37;44m' + msg + '\033[0m')
@@ -170,6 +170,8 @@ class NavTester(Node):
 
     def shutdown(self):
         self.info_msg('Shutting down')
+        self.action_client.destroy()
+
         transition_service = 'lifecycle_manager_navigation/manage_nodes'
         mgr_client = self.create_client(ManageLifecycleNodes, transition_service)
         while not mgr_client.wait_for_service(timeout_sec=1.0):
@@ -178,9 +180,11 @@ class NavTester(Node):
         req = ManageLifecycleNodes.Request()
         req.command = ManageLifecycleNodes.Request().SHUTDOWN
         future = mgr_client.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
         try:
+            self.info_msg('Shutting down navigation lifecycle manager...')
+            rclpy.spin_until_future_complete(self, future)
             future.result()
+            self.info_msg('Shutting down navigation lifecycle manager complete.')
         except Exception as e:
             self.error_msg('Service call failed %r' % (e,))
         transition_service = 'lifecycle_manager_localization/manage_nodes'
@@ -191,9 +195,11 @@ class NavTester(Node):
         req = ManageLifecycleNodes.Request()
         req.command = ManageLifecycleNodes.Request().SHUTDOWN
         future = mgr_client.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
         try:
+            self.info_msg('Shutting down localization lifecycle manager...')
+            rclpy.spin_until_future_complete(self, future)
             future.result()
+            self.info_msg('Shutting down localization lifecycle manager complete')
         except Exception as e:
             self.error_msg('Service call failed %r' % (e,))
 
@@ -323,8 +329,14 @@ def main(argv=sys.argv[1:]):
         # stop and shutdown the nav stack to exit cleanly
         tester.shutdown()
 
+    testers[0].info_msg('Done Shutting Down.')
+
     if not passed:
+        testers[0].info_msg('Exiting failed')
         exit(1)
+    else:
+        testers[0].info_msg('Exiting passed')
+        exit(0)
 
 
 if __name__ == '__main__':

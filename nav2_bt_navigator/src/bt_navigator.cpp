@@ -32,10 +32,27 @@ BtNavigator::BtNavigator()
 {
   RCLCPP_INFO(get_logger(), "Creating");
 
+  const std::vector<std::string> plugin_libs = {
+    "nav2_compute_path_to_pose_action_bt_node",
+    "nav2_follow_path_action_bt_node",
+    "nav2_back_up_action_bt_node",
+    "nav2_spin_action_bt_node",
+    "nav2_wait_action_bt_node",
+    "nav2_clear_costmap_service_bt_node",
+    "nav2_is_stuck_condition_bt_node",
+    "nav2_goal_reached_condition_bt_node",
+    "nav2_initial_pose_received_condition_bt_node",
+    "nav2_reinitialize_global_localization_service_bt_node",
+    "nav2_rate_controller_bt_node",
+    "nav2_recovery_node_bt_node",
+    "nav2_pipeline_sequence_bt_node",
+    "nav2_round_robin_node_bt_node",
+    "nav2_transform_available_condition_bt_node"
+  };
+
   // Declare this node's parameters
   declare_parameter("bt_xml_filename");
-
-  declare_parameter("plugin_lib_names");
+  declare_parameter("plugin_lib_names", plugin_libs);
 }
 
 BtNavigator::~BtNavigator()
@@ -75,7 +92,7 @@ BtNavigator::on_configure(const rclcpp_lifecycle::State & /*state*/)
     get_node_clock_interface(),
     get_node_logging_interface(),
     get_node_waitables_interface(),
-    "NavigateToPose", std::bind(&BtNavigator::navigateToPose, this), false);
+    "navigate_to_pose", std::bind(&BtNavigator::navigateToPose, this), false);
 
   // Get the libraries to pull plugins from
   plugin_lib_names_ = get_parameter("plugin_lib_names").as_string_array();
@@ -112,6 +129,9 @@ BtNavigator::on_configure(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_DEBUG(get_logger(), "Behavior Tree file: '%s'", bt_xml_filename.c_str());
   RCLCPP_DEBUG(get_logger(), "Behavior Tree XML: %s", xml_string_.c_str());
 
+  // Create the Behavior Tree from the XML input
+  tree_ = bt_->buildTreeFromText(xml_string_, blackboard_);
+
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
@@ -142,7 +162,6 @@ BtNavigator::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
 
   // TODO(orduno) Fix the race condition between the worker thread ticking the tree
   //              and the main thread resetting the resources, see #1344
-
   goal_sub_.reset();
   client_node_.reset();
   self_client_.reset();
@@ -155,6 +174,7 @@ BtNavigator::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   plugin_lib_names_.clear();
   xml_string_.clear();
   blackboard_.reset();
+  bt_->haltAllActions(tree_.root_node);
   bt_.reset();
 
   RCLCPP_INFO(get_logger(), "Completed Cleaning up");
@@ -194,11 +214,7 @@ BtNavigator::navigateToPose()
       return action_server_->is_cancel_requested();
     };
 
-
-  // Create the Behavior Tree from the XML input
-  BT::Tree tree = bt_->buildTreeFromText(xml_string_, blackboard_);
-
-  RosTopicLogger topic_logger(client_node_, tree);
+  RosTopicLogger topic_logger(client_node_, tree_);
 
   auto on_loop = [&]() {
       if (action_server_->is_preempt_requested()) {
@@ -210,7 +226,10 @@ BtNavigator::navigateToPose()
     };
 
   // Execute the BT that was previously created in the configure step
-  nav2_behavior_tree::BtStatus rc = bt_->run(&tree, on_loop, is_canceling);
+  nav2_behavior_tree::BtStatus rc = bt_->run(&tree_, on_loop, is_canceling);
+  // Make sure that the Bt is not in a running state from a previous execution
+  // note: if all the ControlNodes are implemented correctly, this is not needed.
+  bt_->haltAllActions(tree_.root_node);
 
   switch (rc) {
     case nav2_behavior_tree::BtStatus::SUCCEEDED:

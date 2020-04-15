@@ -1,12 +1,19 @@
-.. _navigation2-on-real-turtlebot3:
+.. _stvl:
 
-Navigation2 With External Costmap Plugin
-****************************************
+(STVL) Using an External Costmap Plugin
+***************************************
 
 - `Overview`_
 - `Costmap2D and STVL`_
 - `Tutorial Steps`_
-- `Video`_
+
+.. raw:: html
+
+    <h1 align="center">
+      <div style="position: relative; padding-bottom: 0%; overflow: hidden; max-width: 100%; height: auto;">
+        <iframe width="700" height="450" src="https://www.youtube.com/embed/TGxb1OzgmNQ?autoplay=1" frameborder="1" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </h1>
 
 Overview
 ========
@@ -29,9 +36,10 @@ However, these are simply example plugins offered by the base implementation.
 Another available pluginlib plugin for Costmap2D in Navigation2 is STVL.
 
 STVL is another 3D perception plugin similar to the Voxel Layer.
-A more detailed overview of how it works can be found `here <https://github.com/SteveMacenski/spatio_temporal_voxel_layer/>`_, however it buffers 3D data from depth cameras, sonars, lidars, and more into a sparse volumetic world model and removes voxels over time proportional with a sensor model and time-based expiration.
+A more detailed overview of how it works can be found `in this repo <https://github.com/SteveMacenski/spatio_temporal_voxel_layer/>`_, however it buffers 3D data from depth cameras, sonars, lidars, and more into a sparse volumetic world model and removes voxels over time proportional with a sensor model and time-based expiration.
 This can be especially useful for robots in highly dynamic envrionments and decreases the resource utilization for 3D sensor processing by up to 2x.
 STVL also treats 3D lidars and radars as first class citizens for support.
+The ROSCon talk for STVL can be found `in this video <https://vimeo.com/292699571>`_.
 
 Tutorial Steps
 ==============
@@ -44,7 +52,7 @@ Follow the same process as in :ref:`getting_started` for installing and setting 
 1- Install STVL
 ---------------
 
-STVL can be installed in ROS2 Dashing and Eloquent via the ROS Build Farm:
+STVL can be installed in ROS2 via the ROS Build Farm:
 
 - ``sudo apt install ros-<ros2-distro>-spatio-temporal-voxel-layer``
 
@@ -137,12 +145,3 @@ Navigation2 is now using STVL as its 3D sensing costmap layer.
 
 With RViz open and ``publish_voxel_map: true``, you can visualize the underlying data structure's 3D grid using the ``{local, global}_costmap/voxel_grid`` topics.
 Note: It is recommended in RViz to set the ``PointCloud2`` Size to your voxel size and the style to ``Boxes`` with a neutral color for best visualization.
-
-Video
------
-
-.. raw:: html
-
-    <div style="position: relative; padding-bottom: 0%; overflow: hidden; max-width: 100%; height: auto;">
-      <iframe width="960" height="720" src="https://www.youtube.com/embed/TGxb1OzgmNQ" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-    </div>

@@ -4,8 +4,7 @@ Getting Started
 ###############
 
 This document will take you through the process of installing the |PN| binaries
-and navigating a simulated Turtlebot 3 in the Gazebo simulator. We'll use the
-|Distro| version of ROS 2 and Ubuntu 18 for the standard installation options.
+and navigating a simulated Turtlebot 3 in the Gazebo simulator.
 
 .. note::
 
@@ -26,14 +25,14 @@ Installation
 
    .. code-block:: bash
 
-      sudo apt install ros-dashing-navigation2
-      sudo apt install ros-dashing-nav2-bringup
+      sudo apt install ros-<ros2-distro>-navigation2
+      sudo apt install ros-<ros2-distro>-nav2-bringup
 
 3. Install the Turtlebot 3 packages:
 
    .. code-block:: bash
 
-      sudo apt install ros-dashing-turtlebot3*
+      sudo apt install ros-<ros2-distro>-turtlebot3*
 
 Running the Example
 *******************
@@ -43,9 +42,9 @@ Running the Example
 
    .. code-block:: bash
 
-      source /opt/ros/dashing/setup.bash
+      source /opt/ros/<ros2-distro>/setup.bash
       export TURTLEBOT3_MODEL=waffle
-      export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/dashing/share/turtlebot3_gazebo/models
+      export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/opt/ros/<ros2-distro>/share/turtlebot3_gazebo/models
 
 3. In the same terminal, run
 
@@ -59,78 +58,64 @@ Running the Example
    a Gazebo instance with the Turtlebot3 URDF, and RVIZ.
 
    If everything has started correctly, you will see the RViz and Gazebo GUIs like
-   this.
+   this:
 
-   .. figure:: /images/rviz/rviz-not-started.png
-      :scale: 50%
-      :alt: Initial appearance of RViz before hitting startup button
-
-      Initial appearance of RViz before hitting startup button, in unconfigured state.
-
-   .. figure:: /images/gazebo/gazebo_turtlebot1.png
-      :scale: 50%
-      :alt: Initial appearance of Gazebo with Turtlebot 3 world
-
-      Initial appearance of Gazebo with Turtlebot 3 world
+   .. image:: /images/rviz/rviz-not-started.png
+      :width: 45%
+   .. image:: /images/gazebo/gazebo_turtlebot1.png
+      :width: 46%
 
 4. Click the "Startup" button in the bottom left corner of RViz. This will
    cause |PN| to change to the Active state. It should
    change appearance to show the map.
 
-   .. figure:: /images/rviz/rviz_initial.png
-      :scale: 50%
+   .. image:: /images/rviz/rviz_initial.png
+      :width: 700px
+      :align: center
       :alt: Initial appearance of RViz transitioning to the Active state
-
-      Initial appearance of RViz transitioning to the Active state
 
 Navigating
 **********
 
-1. After starting, the robot initially has no idea where it is. By default,
-   |PN| waits for you to give it an approximate starting position. Take a look
-   at where the robot is in the Gazebo world, and find that spot on the map. Set
-   the initial pose by clicking the "2D Pose Estimate" button in RViz, and then
-   down clicking on the map in that location. You set the orientation by dragging
-   forward from the down click.
+After starting, the robot initially has no idea where it is. By default,
+|PN| waits for you to give it an approximate starting position. Take a look
+at where the robot is in the Gazebo world, and find that spot on the map. Set
+the initial pose by clicking the "2D Pose Estimate" button in RViz, and then
+down clicking on the map in that location. You set the orientation by dragging
+forward from the down click.
 
-   If you are using the defaults so far, it should look like this.
+If you are using the defaults so far, the robot should look roughly like this.
 
-   .. figure:: /images/rviz/rviz-set-initial-pose.png
-      :scale: 50%
+   .. image:: /images/rviz/rviz-set-initial-pose.png
+      :width: 700px
+      :align: center
       :alt: Approximate starting location of Turtlebot
 
-      Approximate starting location of Turtlebot
+If you don't get the location exactly right, that's fine. |PN| will refine
+the position as it navigates. You can also, click the "2D Pose
+Estimate" button and try again, if you prefer.
 
-   If you don't get the location exactly right, that's fine. |PN| will refine
-   the position as it navigates. You can also, click the "2D Pose
-   Estimate" button and try again, if you prefer.
+Once you've set the initial pose, the transform tree will be complete and
+|PN| is fully active and ready to go. You should see the robot and particle
+cloud now.
 
-   Once you've set the initial pose, the trasform tree will be complete and
-   |PN| is fully active and ready to go. You should see the robot and particle
-   cloud now.
-
-   .. figure:: /images/rviz/navstack-ready.png
-      :scale: 50%
+   .. image:: /images/rviz/navstack-ready.png
+      :width: 700px
+      :align: center
       :alt: |PN| is ready. Transforms and Costmap show in RViz.
 
-      |PN| is ready. Transforms and Costmap show in RViz.
+Next, click the "Navigaton2 Goal" button and choose a destination.
+This will call the BT navigator to go to that goal through an action server.
+You can pause (cancel) or reset the action through the navigation2 rviz plugin shown.
 
-2. Click the "Navigaton2 Goal" button and choose a destination.
-
-   .. figure:: /images/rviz/navigate-to-pose.png
-      :scale: 50%
+   .. image:: /images/rviz/navigate-to-pose.png
+      :width: 700px
+      :align: center
       :alt: Setting the goal pose in RViz.
 
-      Setting the goal pose in RViz.
+Now watch the robot go!
 
-   Watch the robot go!
-
-   .. figure:: /images/rviz/navigating.png
-      :scale: 50%
-      :alt: Turtlebot on its way to the goal.
-
-      Turtlebot on its way to the goal.
-
-.. image:: images/Navigation2_with_Turtlebot3_in_Gazebo/navigation_with_recovery_behaviours.gif
-    :height: 640px
+.. image:: images/navigation_with_recovery_behaviours.gif
+    :width: 700px
     :alt: Navigation2 with Turtlebot 3 Demo
+    :align: center

@@ -41,6 +41,8 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   start_reset_button_ = new QPushButton;
   pause_resume_button_ = new QPushButton;
   navigation_mode_button_ = new QPushButton;
+  navigation_status_indicator_ = new QLabel;
+  localization_status_indicator_ = new QLabel;
 
   // Create the state machine used to present the proper control button states in the UI
 
@@ -52,6 +54,24 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   const char * single_goal_msg = "Change to waypoint mode navigation";
   const char * waypoint_goal_msg = "Start navigation";
   const char * cancel_waypoint_msg = "Cancel waypoint mode";
+
+  const QString navigation_active("<table><tr><td width=100><b>Navigation:</b></td>"
+    "<td><font color=green>active</color></td></tr></table>");
+  const QString navigation_inactive("<table><tr><td width=100><b>Navigation:</b></td>"
+    "<td>inactive</td></tr></table>");
+  const QString navigation_unknown("<table><tr><td width=100><b>Navigation:</b></td>"
+    "<td>unknown</td></tr></table>");
+  const QString localization_active("<table><tr><td width=100><b>Localization:</b></td>"
+    "<td><font color=green>active</color></td></tr></table>");
+  const QString localization_inactive("<table><tr><td width=100><b>Localization:</b></td>"
+    "<td>inactive</td></tr></table>");
+  const QString localization_unknown("<table><tr><td width=100><b>Localization:</b></td>"
+    "<td>unknown</td></tr></table>");
+
+  navigation_status_indicator_->setText(navigation_unknown);
+  localization_status_indicator_->setText(localization_unknown);
+  navigation_status_indicator_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+  localization_status_indicator_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
   pre_initial_ = new QState();
   pre_initial_->setObjectName("pre_initial");
@@ -76,7 +96,7 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   initial_->assignProperty(navigation_mode_button_, "text", "Waypoint mode");
   initial_->assignProperty(navigation_mode_button_, "enabled", false);
 
-  // State entered when NavigateToPose is not active
+  // State entered when navigate_to_pose action is not active
   idle_ = new QState();
   idle_->setObjectName("idle");
   idle_->assignProperty(start_reset_button_, "text", "Reset");
@@ -91,7 +111,7 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   idle_->assignProperty(navigation_mode_button_, "enabled", true);
   idle_->assignProperty(navigation_mode_button_, "toolTip", single_goal_msg);
 
-  // State entered when NavigateToPose is not active
+  // State entered when navigate_to_pose action is not active
   accumulating_ = new QState();
   accumulating_->setObjectName("accumulating");
   accumulating_->assignProperty(start_reset_button_, "text", "Reset");
@@ -108,7 +128,7 @@ Nav2Panel::Nav2Panel(QWidget * parent)
 
   accumulated_ = new QState();
 
-  // State entered to cancel the NavigateToPose action
+  // State entered to cancel the navigate_to_pose action
   canceled_ = new QState();
   canceled_->setObjectName("canceled");
 
@@ -116,7 +136,7 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   reset_ = new QState();
   reset_->setObjectName("reset");
 
-  // State entered while the NavigateToPose action is active
+  // State entered while the navigate_to_pose action is active
   running_ = new QState();
   running_->setObjectName("running");
   running_->assignProperty(start_reset_button_, "text", "Cancel");
@@ -138,7 +158,7 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   paused_->assignProperty(pause_resume_button_, "toolTip", resume_msg);
   paused_->assignProperty(pause_resume_button_, "enabled", true);
 
-  paused_->assignProperty(navigation_mode_button_, "text", "Start navidation");
+  paused_->assignProperty(navigation_mode_button_, "text", "Start navigation");
   paused_->assignProperty(navigation_mode_button_, "toolTip", resume_msg);
   paused_->assignProperty(navigation_mode_button_, "enabled", true);
 
@@ -187,15 +207,36 @@ Nav2Panel::Nav2Panel(QWidget * parent)
 
   QSignalTransition * activeSignal = new QSignalTransition(
     initial_thread_,
-    &InitialThread::activeSystem);
+    &InitialThread::navigationActive);
   activeSignal->setTargetState(idle_);
   pre_initial_->addTransition(activeSignal);
 
   QSignalTransition * inactiveSignal = new QSignalTransition(
     initial_thread_,
-    &InitialThread::inactiveSystem);
+    &InitialThread::navigationInactive);
   inactiveSignal->setTargetState(initial_);
   pre_initial_->addTransition(inactiveSignal);
+
+  QObject::connect(
+    initial_thread_, &InitialThread::navigationActive,
+    [this, navigation_active] {
+      navigation_status_indicator_->setText(navigation_active);
+    });
+  QObject::connect(
+    initial_thread_, &InitialThread::navigationInactive,
+    [this, navigation_inactive] {
+      navigation_status_indicator_->setText(navigation_inactive);
+    });
+  QObject::connect(
+    initial_thread_, &InitialThread::localizationActive,
+    [this, localization_active] {
+      localization_status_indicator_->setText(localization_active);
+    });
+  QObject::connect(
+    initial_thread_, &InitialThread::localizationInactive,
+    [this, localization_inactive] {
+      localization_status_indicator_->setText(localization_inactive);
+    });
 
   state_machine_.addState(pre_initial_);
   state_machine_.addState(initial_);
@@ -216,6 +257,8 @@ Nav2Panel::Nav2Panel(QWidget * parent)
 
   // Lay out the items in the panel
   QVBoxLayout * main_layout = new QVBoxLayout;
+  main_layout->addWidget(navigation_status_indicator_);
+  main_layout->addWidget(localization_status_indicator_);
   main_layout->addWidget(pause_resume_button_);
   main_layout->addWidget(start_reset_button_);
   main_layout->addWidget(navigation_mode_button_);
@@ -230,7 +273,7 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   navigation_action_client_ =
     rclcpp_action::create_client<nav2_msgs::action::NavigateToPose>(
     client_node_,
-    "NavigateToPose");
+    "navigate_to_pose");
   waypoint_follower_action_client_ =
     rclcpp_action::create_client<nav2_msgs::action::FollowWaypoints>(
     client_node_,

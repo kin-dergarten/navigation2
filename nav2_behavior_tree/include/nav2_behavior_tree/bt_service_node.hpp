@@ -26,13 +26,13 @@ namespace nav2_behavior_tree
 {
 
 template<class ServiceT>
-class BtServiceNode : public BT::CoroActionNode
+class BtServiceNode : public BT::SyncActionNode
 {
 public:
   BtServiceNode(
     const std::string & service_node_name,
     const BT::NodeConfiguration & conf)
-  : BT::CoroActionNode(service_node_name, conf), service_node_name_(service_node_name)
+  : BT::SyncActionNode(service_node_name, conf), service_node_name_(service_node_name)
   {
     node_ = config().blackboard->get<rclcpp::Node::SharedPtr>("node");
 
@@ -85,7 +85,19 @@ public:
   {
     on_tick();
     auto future_result = service_client_->async_send_request(request_);
+    return check_future(future_result);
+  }
 
+  // Fill in service request with information if necessary
+  virtual void on_tick()
+  {
+    request_ = std::make_shared<typename ServiceT::Request>();
+  }
+
+  // Check the future and decide the status of Behaviortree
+  virtual BT::NodeStatus check_future(
+    std::shared_future<typename ServiceT::Response::SharedPtr> future_result)
+  {
     rclcpp::executor::FutureReturnCode rc;
     rc = rclcpp::spin_until_future_complete(
       node_,
@@ -96,20 +108,14 @@ public:
       RCLCPP_WARN(
         node_->get_logger(),
         "Node timed out while executing service call to %s.", service_name_.c_str());
-      on_server_timeout();
+      on_wait_for_result();
     }
     return BT::NodeStatus::FAILURE;
   }
 
-  // Fill in service request with information if necessary
-  virtual void on_tick()
-  {
-    request_ = std::make_shared<typename ServiceT::Request>();
-  }
-
   // An opportunity to do something after
   // a timeout waiting for a result that hasn't been received yet
-  virtual void on_server_timeout()
+  virtual void on_wait_for_result()
   {
   }
 

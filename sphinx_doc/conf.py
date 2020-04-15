@@ -55,14 +55,14 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Navigation 2'
-copyright = u'2019'
+copyright = u'2020'
 author = u'Various'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 
-version = release = "0.2.3"
+version = release = "1.0.0"
 
 #
 # The short X.Y version.
@@ -172,8 +172,8 @@ html_show_sourcelink = False
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page
 # bottom,
-# using the given strftime format.
-html_last_updated_fmt = '%b %d, %Y'
+# using the given strftime format (ei %b %d, %Y).
+html_last_updated_fmt = None
 
 # -- Options for HTMLHelp output ------------------------------------------
 
