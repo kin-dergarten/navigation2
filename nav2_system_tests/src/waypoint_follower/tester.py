@@ -84,8 +84,12 @@ class WaypointFollowerTest(Node):
 
         self.info_msg('Sending goal request...')
         send_goal_future = self.action_client.send_goal_async(action_request)
-        rclpy.spin_until_future_complete(self, send_goal_future)
-        goal_handle = send_goal_future.result()
+        try:
+            rclpy.spin_until_future_complete(self, send_goal_future)
+            goal_handle = send_goal_future.result()
+        except Exception as e:
+            self.error_msg('Service call failed %r' % (e,))
+
         if not goal_handle.accepted:
             self.error_msg('Goal rejected')
             return False
@@ -94,9 +98,13 @@ class WaypointFollowerTest(Node):
         get_result_future = goal_handle.get_result_async()
 
         self.info_msg("Waiting for 'FollowWaypoints' action to complete")
-        rclpy.spin_until_future_complete(self, get_result_future)
-        status = get_result_future.result().status
-        result = get_result_future.result().result
+        try:
+            rclpy.spin_until_future_complete(self, get_result_future)
+            status = get_result_future.result().status
+            result = get_result_future.result().result
+        except Exception as e:
+            self.error_msg('Service call failed %r' % (e,))
+
         if status != GoalStatus.STATUS_SUCCEEDED:
             self.info_msg('Goal failed with status code: {0}'.format(status))
             return False
@@ -120,8 +128,8 @@ class WaypointFollowerTest(Node):
         req = ManageLifecycleNodes.Request()
         req.command = ManageLifecycleNodes.Request().SHUTDOWN
         future = mgr_client.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
         try:
+            rclpy.spin_until_future_complete(self, future)
             future.result()
         except Exception as e:
             self.error_msg('Service call failed %r' % (e,))
@@ -134,8 +142,8 @@ class WaypointFollowerTest(Node):
         req = ManageLifecycleNodes.Request()
         req.command = ManageLifecycleNodes.Request().SHUTDOWN
         future = mgr_client.call_async(req)
-        rclpy.spin_until_future_complete(self, future)
         try:
+            rclpy.spin_until_future_complete(self, future)
             future.result()
         except Exception as e:
             self.error_msg('Service call failed %r' % (e,))
@@ -173,10 +181,13 @@ def main(argv=sys.argv[1:]):
 
     result = test.run()
     test.shutdown()
+    test.info_msg('Done Shutting Down.')
 
     if not result:
+        test.info_msg('Exiting failed')
         exit(1)
     else:
+        test.info_msg('Exiting passed')
         exit(0)
 
 

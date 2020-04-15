@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "builtin_interfaces/msg/duration.hpp"
 #include "nav2_util/costmap.hpp"
@@ -89,7 +90,7 @@ PlannerServer::on_configure(const rclcpp_lifecycle::State & state)
     exit(-1);
   }
 
-  for (uint i = 0; i != plugin_types_.size(); i++) {
+  for (size_t i = 0; i != plugin_types_.size(); i++) {
     try {
       nav2_core::GlobalPlanner::Ptr planner =
         gp_loader_.createUniqueInstance(plugin_types_[i]);
@@ -106,7 +107,7 @@ PlannerServer::on_configure(const rclcpp_lifecycle::State & state)
     }
   }
 
-  for (uint i = 0; i != plugin_types_.size(); i++) {
+  for (size_t i = 0; i != plugin_types_.size(); i++) {
     planner_ids_concat_ += plugin_ids_[i] + std::string(" ");
   }
 
@@ -214,7 +215,8 @@ PlannerServer::computePlan()
     }
 
     geometry_msgs::msg::PoseStamped start;
-    if (!nav2_util::getCurrentPose(start, *tf_)) {
+    if (!costmap_ros_->getRobotPose(start)) {
+      RCLCPP_ERROR(this->get_logger(), "Could not get robot pose");
       return;
     }
 
@@ -293,7 +295,8 @@ PlannerServer::computePlan()
 void
 PlannerServer::publishPlan(const nav_msgs::msg::Path & path)
 {
-  plan_publisher_->publish(path);
+  auto msg = std::make_unique<nav_msgs::msg::Path>(path);
+  plan_publisher_->publish(std::move(msg));
 }
 
 }  // namespace nav2_planner

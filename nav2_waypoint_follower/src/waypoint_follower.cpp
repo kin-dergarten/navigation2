@@ -26,7 +26,7 @@ namespace nav2_waypoint_follower
 {
 
 WaypointFollower::WaypointFollower()
-: nav2_util::LifecycleNode("WaypointFollower", "", true)
+: nav2_util::LifecycleNode("WaypointFollower", "", false)
 {
   RCLCPP_INFO(get_logger(), "Creating");
 
@@ -47,11 +47,12 @@ WaypointFollower::on_configure(const rclcpp_lifecycle::State & /*state*/)
   stop_on_failure_ = get_parameter("stop_on_failure").as_bool();
   loop_rate_ = get_parameter("loop_rate").as_int();
 
+  // use suffix '_rclcpp_node' to keep parameter file consistency #1773
   client_node_ = std::make_shared<rclcpp::Node>(
-    std::string(get_name()) + std::string("_client_node"));
+    std::string(get_name()) + std::string("_rclcpp_node"));
 
   nav_to_pose_client_ = rclcpp_action::create_client<ClientT>(
-    client_node_, "NavigateToPose");
+    client_node_, "navigate_to_pose");
 
   action_server_ = std::make_unique<ActionServer>(
     get_node_base_interface(),
@@ -126,7 +127,7 @@ WaypointFollower::followWaypoints()
     static_cast<int>(goal->poses.size()));
 
   rclcpp::Rate r(loop_rate_);
-  uint goal_index = 0;
+  uint32_t goal_index = 0;
   bool new_goal = true;
 
   while (rclcpp::ok()) {
@@ -242,7 +243,7 @@ WaypointFollower::goalResponseCallback(
   if (!goal_handle) {
     RCLCPP_ERROR(
       get_logger(),
-      "NavigateToPose client failed to send goal to server.");
+      "navigate_to_pose action client failed to send goal to server.");
     current_goal_status_ = ActionStatus::FAILED;
   }
 }

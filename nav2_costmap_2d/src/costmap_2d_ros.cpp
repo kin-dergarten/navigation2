@@ -41,6 +41,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "nav2_costmap_2d/layered_costmap.hpp"
 #include "nav2_util/execution_timer.hpp"
@@ -197,11 +198,10 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
   std::string tf_error;
 
   RCLCPP_INFO(get_logger(), "Checking transform");
-  auto sleep_dur = std::chrono::milliseconds(100);
+  rclcpp::Rate r(2);
   while (rclcpp::ok() &&
     !tf_buffer_->canTransform(
-      global_frame_, robot_base_frame_, tf2::TimePointZero,
-      tf2::durationFromSec(1.0), &tf_error))
+      global_frame_, robot_base_frame_, tf2::TimePointZero, &tf_error))
   {
     RCLCPP_INFO(
       get_logger(), "Timed out waiting for transform from %s to %s"
@@ -211,11 +211,11 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
     // The error string will accumulate and errors will typically be the same, so the last
     // will do for the warning above. Reset the string here to avoid accumulation
     tf_error.clear();
-    rclcpp::sleep_for(sleep_dur);
+    r.sleep();
   }
 
   // Create a thread to handle updating the map
-  stopped_ = false;
+  stopped_ = true;  // to active plugins
   stop_updates_ = false;
   map_update_thread_shutdown_ = false;
 
@@ -442,13 +442,13 @@ Costmap2DROS::updateMap()
       const double yaw = tf2::getYaw(pose.pose.orientation);
       layered_costmap_->updateMap(x, y, yaw);
 
-      geometry_msgs::msg::PolygonStamped footprint;
-      footprint.header.frame_id = global_frame_;
-      footprint.header.stamp = now();
-      transformFootprint(x, y, yaw, padded_footprint_, footprint);
+      auto footprint = std::make_unique<geometry_msgs::msg::PolygonStamped>();
+      footprint->header.frame_id = global_frame_;
+      footprint->header.stamp = now();
+      transformFootprint(x, y, yaw, padded_footprint_, *footprint);
 
       RCLCPP_DEBUG(get_logger(), "Publishing footprint");
-      footprint_pub_->publish(footprint);
+      footprint_pub_->publish(std::move(footprint));
       initialized_ = true;
     }
   }
