@@ -45,6 +45,10 @@ install
 __pycache__/
 *.py[cod]
 
+# Clion project files
+.idea/
+cmake-build-debug/
+
 sphinx_doc/_build
 
 cmake-build-debug/
