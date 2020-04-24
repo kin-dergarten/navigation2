@@ -21,7 +21,6 @@
 #include "behaviortree_cpp_v3/action_node.h"
 #include "nav2_util/node_utils.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
-#include "nav2_behavior_tree/bt_conversions.hpp"
 
 namespace nav2_behavior_tree
 {
@@ -180,7 +179,7 @@ public:
     if (should_cancel_goal()) {
       auto future_cancel = action_client_->async_cancel_goal(goal_handle_);
       if (rclcpp::spin_until_future_complete(node_, future_cancel) !=
-        rclcpp::FutureReturnCode::SUCCESS)
+        rclcpp::executor::FutureReturnCode::SUCCESS)
       {
         RCLCPP_ERROR(
           node_->get_logger(),
