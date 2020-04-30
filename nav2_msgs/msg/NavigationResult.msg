@@ -1,0 +1,6 @@
+int8 NO_ERROR = 0
+int8 GENERIC_ERROR = 1
+int8 BLOCKED_BY_OBSTACLE_ERROR = 2
+
+int8 status
+
