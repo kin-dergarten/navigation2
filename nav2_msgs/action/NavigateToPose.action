@@ -4,4 +4,7 @@ geometry_msgs/PoseStamped pose
 #result definition
 nav2_msgs/NavigationResult result
 ---
-#feedback
+geometry_msgs/PoseStamped current_pose
+builtin_interfaces/Duration navigation_time
+int16 number_of_recoveries
+float32 distance_remaining

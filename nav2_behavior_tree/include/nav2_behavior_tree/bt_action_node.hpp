@@ -21,6 +21,7 @@
 #include "behaviortree_cpp_v3/action_node.h"
 #include "nav2_util/node_utils.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
+#include "nav2_behavior_tree/bt_conversions.hpp"
 
 namespace nav2_behavior_tree
 {
@@ -179,7 +180,7 @@ public:
     if (should_cancel_goal()) {
       auto future_cancel = action_client_->async_cancel_goal(goal_handle_);
       if (rclcpp::spin_until_future_complete(node_, future_cancel) !=
-        rclcpp::executor::FutureReturnCode::SUCCESS)
+        rclcpp::FutureReturnCode::SUCCESS)
       {
         RCLCPP_ERROR(
           node_->get_logger(),
@@ -202,13 +203,8 @@ protected:
     auto status = goal_handle_->get_status();
 
     // Check if the goal is still executing
-    if (status == action_msgs::msg::GoalStatus::STATUS_ACCEPTED ||
-      status == action_msgs::msg::GoalStatus::STATUS_EXECUTING)
-    {
-      return true;
-    }
-
-    return false;
+    return status == action_msgs::msg::GoalStatus::STATUS_ACCEPTED ||
+           status == action_msgs::msg::GoalStatus::STATUS_EXECUTING;
   }
 
 
@@ -234,6 +230,14 @@ protected:
     if (!goal_handle_) {
       throw std::runtime_error("Goal was rejected by the action server");
     }
+  }
+
+  void increment_recovery_count()
+  {
+    int recovery_count = 0;
+    config().blackboard->get<int>("number_recoveries", recovery_count);  // NOLINT
+    recovery_count += 1;
+    config().blackboard->set<int>("number_recoveries", recovery_count);  // NOLINT
   }
 
   std::string action_name_;
