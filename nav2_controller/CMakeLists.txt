@@ -31,6 +31,7 @@ add_library(${library_name}
   src/nav2_controller.cpp
   src/progress_checker.cpp
 )
+target_link_libraries(${library_name} pthread)
 
 target_compile_definitions(${library_name} PUBLIC "PLUGINLIB__DISABLE_BOOST_FUNCTIONS")
 
