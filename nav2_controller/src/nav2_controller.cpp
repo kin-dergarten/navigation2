@@ -252,7 +252,11 @@ void ControllerServer::computeControl()
 
       if (action_server_->is_cancel_requested()) {
         RCLCPP_INFO(get_logger(), "Goal was canceled. Stopping the robot.");
-        action_server_->terminate_all();
+        nav2_msgs::msg::NavigationResult navResult;
+        navResult.status = nav2_msgs::msg::NavigationResult::GENERIC_ERROR;
+        std::shared_ptr<nav2_msgs::action::FollowPath_Result> result = std::make_shared<nav2_msgs::action::FollowPath_Result>();
+        result->result = navResult;
+        action_server_->terminate_all(result);
         publishZeroVelocity();
         return;
       }

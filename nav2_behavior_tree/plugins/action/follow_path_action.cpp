@@ -42,6 +42,17 @@ public:
     getInput("controller_id", goal_.controller_id);
   }
 
+  BT::NodeStatus on_aborted() override
+  {
+    if (result_.result->result.status != nav2_msgs::msg::NavigationResult::PREEMPTED) {
+      return BT::NodeStatus::FAILURE;
+    }
+
+    RCLCPP_INFO(node_->get_logger(), "follow path preempted");
+    goal_result_available_ = false;
+    return BT::NodeStatus::RUNNING;
+  }
+
   void on_wait_for_result() override
   {
     // Check if the goal has been updated
