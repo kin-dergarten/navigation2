@@ -3,7 +3,7 @@ nav_msgs/Path path
 string controller_id
 ---
 #result definition
-std_msgs/Empty result
+nav2_msgs/NavigationResult result
 ---
 #feedback
 float32 distance_to_goal

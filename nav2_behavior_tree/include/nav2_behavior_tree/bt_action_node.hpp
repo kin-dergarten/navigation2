@@ -176,6 +176,8 @@ public:
   // make sure to cancel the ROS2 action if it is still running.
   void halt() override
   {
+    RCLCPP_INFO(node_->get_logger(),
+                "Halting action server %s", action_name_.c_str());
     if (should_cancel_goal()) {
       auto future_cancel = action_client_->async_cancel_goal(goal_handle_);
       if (rclcpp::spin_until_future_complete(node_, future_cancel) !=
