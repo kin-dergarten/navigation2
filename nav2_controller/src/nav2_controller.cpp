@@ -320,7 +320,11 @@ void ControllerServer::computeControl()
   } catch (nav2_core::PlannerException & e) {
     RCLCPP_ERROR(this->get_logger(), e.what());
     publishZeroVelocity();
-    action_server_->terminate_current();
+    nav2_msgs::msg::NavigationResult navResult;
+    navResult.status = nav2_msgs::msg::NavigationResult::GENERIC_ERROR;
+    std::shared_ptr<nav2_msgs::action::FollowPath_Result> result = std::make_shared<nav2_msgs::action::FollowPath_Result>();
+    result->result = navResult;
+    action_server_->terminate_current(result);
     return;
   }
 
