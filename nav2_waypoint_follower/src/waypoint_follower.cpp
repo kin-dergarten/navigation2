@@ -19,14 +19,13 @@
 #include <streambuf>
 #include <string>
 #include <utility>
-
-// TODO(stevemacenski): Add capability for reading in yaml file and executing
+#include <vector>
 
 namespace nav2_waypoint_follower
 {
 
 WaypointFollower::WaypointFollower()
-: nav2_util::LifecycleNode("WaypointFollower", "", true)
+: nav2_util::LifecycleNode("WaypointFollower", "", false)
 {
   RCLCPP_INFO(get_logger(), "Creating");
 
@@ -36,7 +35,6 @@ WaypointFollower::WaypointFollower()
 
 WaypointFollower::~WaypointFollower()
 {
-  RCLCPP_INFO(get_logger(), "Destroying");
 }
 
 nav2_util::CallbackReturn
@@ -47,8 +45,13 @@ WaypointFollower::on_configure(const rclcpp_lifecycle::State & /*state*/)
   stop_on_failure_ = get_parameter("stop_on_failure").as_bool();
   loop_rate_ = get_parameter("loop_rate").as_int();
 
+  std::vector<std::string> new_args = rclcpp::NodeOptions().arguments();
+  new_args.push_back("--ros-args");
+  new_args.push_back("-r");
+  new_args.push_back(std::string("__node:=") + this->get_name() + "_rclcpp_node");
+  new_args.push_back("--");
   client_node_ = std::make_shared<rclcpp::Node>(
-    std::string(get_name()) + std::string("_client_node"));
+    "_", "", rclcpp::NodeOptions().arguments(new_args));
 
   nav_to_pose_client_ = rclcpp_action::create_client<ClientT>(
     client_node_, "navigate_to_pose");
@@ -58,7 +61,7 @@ WaypointFollower::on_configure(const rclcpp_lifecycle::State & /*state*/)
     get_node_clock_interface(),
     get_node_logging_interface(),
     get_node_waitables_interface(),
-    "FollowWaypoints", std::bind(&WaypointFollower::followWaypoints, this), false);
+    "FollowWaypoints", std::bind(&WaypointFollower::followWaypoints, this));
 
   return nav2_util::CallbackReturn::SUCCESS;
 }
@@ -70,6 +73,9 @@ WaypointFollower::on_activate(const rclcpp_lifecycle::State & /*state*/)
 
   action_server_->activate();
 
+  // create bond connection
+  createBond();
+
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
@@ -79,6 +85,9 @@ WaypointFollower::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_INFO(get_logger(), "Deactivating");
 
   action_server_->deactivate();
+
+  // destroy bond connection
+  destroyBond();
 
   return nav2_util::CallbackReturn::SUCCESS;
 }
@@ -91,13 +100,6 @@ WaypointFollower::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   action_server_.reset();
   nav_to_pose_client_.reset();
 
-  return nav2_util::CallbackReturn::SUCCESS;
-}
-
-nav2_util::CallbackReturn
-WaypointFollower::on_error(const rclcpp_lifecycle::State & /*state*/)
-{
-  RCLCPP_FATAL(get_logger(), "Lifecycle node entered error state");
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
@@ -126,13 +128,16 @@ WaypointFollower::followWaypoints()
     static_cast<int>(goal->poses.size()));
 
   rclcpp::Rate r(loop_rate_);
-  uint goal_index = 0;
+  uint32_t goal_index = 0;
   bool new_goal = true;
 
   while (rclcpp::ok()) {
     // Check if asked to stop processing action
     if (action_server_->is_cancel_requested()) {
-      RCLCPP_INFO(get_logger(), "Cancelling action.");
+      auto cancel_future = nav_to_pose_client_->async_cancel_all_goals();
+      rclcpp::spin_until_future_complete(client_node_, cancel_future);
+      // for result callback processing
+      spin_some(client_node_);
       action_server_->terminate_all();
       return;
     }
@@ -156,7 +161,7 @@ WaypointFollower::followWaypoints()
         std::bind(&WaypointFollower::resultCallback, this, std::placeholders::_1);
       send_goal_options.goal_response_callback =
         std::bind(&WaypointFollower::goalResponseCallback, this, std::placeholders::_1);
-      auto future_goal_handle =
+      future_goal_handle_ =
         nav_to_pose_client_->async_send_goal(client_goal, send_goal_options);
       current_goal_status_ = ActionStatus::PROCESSING;
     }

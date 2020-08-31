@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <vector>
+#include <utility>
 
 #include "nav2_rviz_plugins/goal_common.hpp"
 #include "rviz_common/display_context.hpp"
@@ -41,6 +42,8 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   start_reset_button_ = new QPushButton;
   pause_resume_button_ = new QPushButton;
   navigation_mode_button_ = new QPushButton;
+  navigation_status_indicator_ = new QLabel;
+  localization_status_indicator_ = new QLabel;
 
   // Create the state machine used to present the proper control button states in the UI
 
@@ -52,6 +55,24 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   const char * single_goal_msg = "Change to waypoint mode navigation";
   const char * waypoint_goal_msg = "Start navigation";
   const char * cancel_waypoint_msg = "Cancel waypoint mode";
+
+  const QString navigation_active("<table><tr><td width=100><b>Navigation:</b></td>"
+    "<td><font color=green>active</color></td></tr></table>");
+  const QString navigation_inactive("<table><tr><td width=100><b>Navigation:</b></td>"
+    "<td>inactive</td></tr></table>");
+  const QString navigation_unknown("<table><tr><td width=100><b>Navigation:</b></td>"
+    "<td>unknown</td></tr></table>");
+  const QString localization_active("<table><tr><td width=100><b>Localization:</b></td>"
+    "<td><font color=green>active</color></td></tr></table>");
+  const QString localization_inactive("<table><tr><td width=100><b>Localization:</b></td>"
+    "<td>inactive</td></tr></table>");
+  const QString localization_unknown("<table><tr><td width=100><b>Localization:</b></td>"
+    "<td>unknown</td></tr></table>");
+
+  navigation_status_indicator_->setText(navigation_unknown);
+  localization_status_indicator_->setText(localization_unknown);
+  navigation_status_indicator_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+  localization_status_indicator_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
   pre_initial_ = new QState();
   pre_initial_->setObjectName("pre_initial");
@@ -138,7 +159,7 @@ Nav2Panel::Nav2Panel(QWidget * parent)
   paused_->assignProperty(pause_resume_button_, "toolTip", resume_msg);
   paused_->assignProperty(pause_resume_button_, "enabled", true);
 
-  paused_->assignProperty(navigation_mode_button_, "text", "Start navidation");
+  paused_->assignProperty(navigation_mode_button_, "text", "Start navigation");
   paused_->assignProperty(navigation_mode_button_, "toolTip", resume_msg);
   paused_->assignProperty(navigation_mode_button_, "enabled", true);
 
@@ -187,15 +208,36 @@ Nav2Panel::Nav2Panel(QWidget * parent)
 
   QSignalTransition * activeSignal = new QSignalTransition(
     initial_thread_,
-    &InitialThread::activeSystem);
+    &InitialThread::navigationActive);
   activeSignal->setTargetState(idle_);
   pre_initial_->addTransition(activeSignal);
 
   QSignalTransition * inactiveSignal = new QSignalTransition(
     initial_thread_,
-    &InitialThread::inactiveSystem);
+    &InitialThread::navigationInactive);
   inactiveSignal->setTargetState(initial_);
   pre_initial_->addTransition(inactiveSignal);
+
+  QObject::connect(
+    initial_thread_, &InitialThread::navigationActive,
+    [this, navigation_active] {
+      navigation_status_indicator_->setText(navigation_active);
+    });
+  QObject::connect(
+    initial_thread_, &InitialThread::navigationInactive,
+    [this, navigation_inactive] {
+      navigation_status_indicator_->setText(navigation_inactive);
+    });
+  QObject::connect(
+    initial_thread_, &InitialThread::localizationActive,
+    [this, localization_active] {
+      localization_status_indicator_->setText(localization_active);
+    });
+  QObject::connect(
+    initial_thread_, &InitialThread::localizationInactive,
+    [this, localization_inactive] {
+      localization_status_indicator_->setText(localization_inactive);
+    });
 
   state_machine_.addState(pre_initial_);
   state_machine_.addState(initial_);
@@ -216,6 +258,8 @@ Nav2Panel::Nav2Panel(QWidget * parent)
 
   // Lay out the items in the panel
   QVBoxLayout * main_layout = new QVBoxLayout;
+  main_layout->addWidget(navigation_status_indicator_);
+  main_layout->addWidget(localization_status_indicator_);
   main_layout->addWidget(pause_resume_button_);
   main_layout->addWidget(start_reset_button_);
   main_layout->addWidget(navigation_mode_button_);
@@ -366,7 +410,7 @@ Nav2Panel::onCancelButtonPressed()
       waypoint_follower_action_client_->async_cancel_goal(waypoint_follower_goal_handle_);
 
     if (rclcpp::spin_until_future_complete(client_node_, future_cancel) !=
-      rclcpp::executor::FutureReturnCode::SUCCESS)
+      rclcpp::FutureReturnCode::SUCCESS)
     {
       RCLCPP_ERROR(client_node_->get_logger(), "Failed to cancel waypoint follower");
       return;
@@ -375,7 +419,7 @@ Nav2Panel::onCancelButtonPressed()
     auto future_cancel = navigation_action_client_->async_cancel_goal(navigation_goal_handle_);
 
     if (rclcpp::spin_until_future_complete(client_node_, future_cancel) !=
-      rclcpp::executor::FutureReturnCode::SUCCESS)
+      rclcpp::FutureReturnCode::SUCCESS)
     {
       RCLCPP_ERROR(client_node_->get_logger(), "Failed to cancel goal");
       return;
@@ -479,7 +523,7 @@ Nav2Panel::startWaypointFollowing(std::vector<geometry_msgs::msg::PoseStamped> p
   auto future_goal_handle =
     waypoint_follower_action_client_->async_send_goal(waypoint_follower_goal_, send_goal_options);
   if (rclcpp::spin_until_future_complete(client_node_, future_goal_handle) !=
-    rclcpp::executor::FutureReturnCode::SUCCESS)
+    rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_ERROR(client_node_->get_logger(), "Send goal call failed");
     return;
@@ -519,7 +563,7 @@ Nav2Panel::startNavigation(geometry_msgs::msg::PoseStamped pose)
   auto future_goal_handle =
     navigation_action_client_->async_send_goal(navigation_goal_, send_goal_options);
   if (rclcpp::spin_until_future_complete(client_node_, future_goal_handle) !=
-    rclcpp::executor::FutureReturnCode::SUCCESS)
+    rclcpp::FutureReturnCode::SUCCESS)
   {
     RCLCPP_ERROR(client_node_->get_logger(), "Send goal call failed");
     return;
@@ -566,7 +610,7 @@ Nav2Panel::updateWpNavigationMarkers()
 {
   resetUniqueId();
 
-  visualization_msgs::msg::MarkerArray marker_array;
+  auto marker_array = std::make_unique<visualization_msgs::msg::MarkerArray>();
 
   for (size_t i = 0; i < acummulated_poses_.size(); i++) {
     // Draw a green arrow at the waypoint pose
@@ -585,7 +629,7 @@ Nav2Panel::updateWpNavigationMarkers()
     arrow_marker.color.a = 1.0f;
     arrow_marker.lifetime = rclcpp::Duration(0);
     arrow_marker.frame_locked = false;
-    marker_array.markers.push_back(arrow_marker);
+    marker_array->markers.push_back(arrow_marker);
 
     // Draw a red circle at the waypoint pose
     visualization_msgs::msg::Marker circle_marker;
@@ -603,7 +647,7 @@ Nav2Panel::updateWpNavigationMarkers()
     circle_marker.color.a = 1.0f;
     circle_marker.lifetime = rclcpp::Duration(0);
     circle_marker.frame_locked = false;
-    marker_array.markers.push_back(circle_marker);
+    marker_array->markers.push_back(circle_marker);
 
     // Draw the waypoint number
     visualization_msgs::msg::Marker marker_text;
@@ -623,16 +667,16 @@ Nav2Panel::updateWpNavigationMarkers()
     marker_text.lifetime = rclcpp::Duration(0);
     marker_text.frame_locked = false;
     marker_text.text = "wp_" + std::to_string(i + 1);
-    marker_array.markers.push_back(marker_text);
+    marker_array->markers.push_back(marker_text);
   }
 
-  if (marker_array.markers.empty()) {
+  if (marker_array->markers.empty()) {
     visualization_msgs::msg::Marker clear_all_marker;
     clear_all_marker.action = visualization_msgs::msg::Marker::DELETEALL;
-    marker_array.markers.push_back(clear_all_marker);
+    marker_array->markers.push_back(clear_all_marker);
   }
 
-  wp_navigation_markers_pub_->publish(marker_array);
+  wp_navigation_markers_pub_->publish(std::move(marker_array));
 }
 
 }  // namespace nav2_rviz_plugins

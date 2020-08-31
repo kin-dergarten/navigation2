@@ -41,6 +41,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include "nav2_costmap_2d/layered_costmap.hpp"
 #include "nav2_util/execution_timer.hpp"
@@ -70,17 +71,20 @@ Costmap2DROS::Costmap2DROS(
     nav2_util::add_namespaces(parent_namespace, local_namespace),
     "--ros-args", "-r", name + ":" + std::string("__node:=") + name
   })),
-  name_(name), parent_namespace_(parent_namespace)
+  name_(name),
+  parent_namespace_(parent_namespace),
+  default_plugins_{"static_layer", "obstacle_layer", "inflation_layer"},
+  default_types_{
+    "nav2_costmap_2d::StaticLayer",
+    "nav2_costmap_2d::ObstacleLayer",
+    "nav2_costmap_2d::InflationLayer"}
 {
   RCLCPP_INFO(get_logger(), "Creating Costmap");
   auto options = rclcpp::NodeOptions().arguments(
     {"--ros-args", "-r", std::string("__node:=") + get_name() + "_client", "--"});
   client_node_ = std::make_shared<rclcpp::Node>("_", options);
 
-  std::vector<std::string> plugin_names{"static_layer", "obstacle_layer", "inflation_layer"};
-  std::vector<std::string> plugin_types{"nav2_costmap_2d::StaticLayer",
-    "nav2_costmap_2d::ObstacleLayer", "nav2_costmap_2d::InflationLayer"};
-  std::vector<std::string> clearable_layers{"obstacle_layer"};
+  std::vector<std::string> clearable_layers{"obstacle_layer", "voxel_layer", "range_layer"};
 
   declare_parameter("always_send_full_costmap", rclcpp::ParameterValue(false));
   declare_parameter("footprint_padding", rclcpp::ParameterValue(0.01f));
@@ -95,8 +99,7 @@ Costmap2DROS::Costmap2DROS(
   declare_parameter("observation_sources", rclcpp::ParameterValue(std::string("")));
   declare_parameter("origin_x", rclcpp::ParameterValue(0.0));
   declare_parameter("origin_y", rclcpp::ParameterValue(0.0));
-  declare_parameter("plugin_names", rclcpp::ParameterValue(plugin_names));
-  declare_parameter("plugin_types", rclcpp::ParameterValue(plugin_types));
+  declare_parameter("plugins", rclcpp::ParameterValue(default_plugins_));
   declare_parameter("publish_frequency", rclcpp::ParameterValue(1.0));
   declare_parameter("resolution", rclcpp::ParameterValue(0.1));
   declare_parameter("robot_base_frame", rclcpp::ParameterValue(std::string("base_link")));
@@ -113,7 +116,6 @@ Costmap2DROS::Costmap2DROS(
 
 Costmap2DROS::~Costmap2DROS()
 {
-  RCLCPP_INFO(get_logger(), "Destroying");
 }
 
 nav2_util::CallbackReturn
@@ -123,7 +125,8 @@ Costmap2DROS::on_configure(const rclcpp_lifecycle::State & /*state*/)
   getParameters();
 
   // Create the costmap itself
-  layered_costmap_ = new LayeredCostmap(global_frame_, rolling_window_, track_unknown_space_);
+  layered_costmap_ = std::make_unique<LayeredCostmap>(
+    global_frame_, rolling_window_, track_unknown_space_);
 
   if (!layered_costmap_->isSizeLocked()) {
     layered_costmap_->resizeMap(
@@ -148,7 +151,7 @@ Costmap2DROS::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
     // TODO(mjeronimo): instead of get(), use a shared ptr
     plugin->initialize(
-      layered_costmap_, plugin_names_[i], tf_buffer_.get(),
+      layered_costmap_.get(), plugin_names_[i], tf_buffer_.get(),
       shared_from_this(), client_node_, rclcpp_node_);
 
     RCLCPP_INFO(get_logger(), "Initialized plugin \"%s\"", plugin_names_[i].c_str());
@@ -163,7 +166,7 @@ Costmap2DROS::on_configure(const rclcpp_lifecycle::State & /*state*/)
   footprint_pub_ = create_publisher<geometry_msgs::msg::PolygonStamped>(
     "published_footprint", rclcpp::SystemDefaultsQoS());
 
-  costmap_publisher_ = new Costmap2DPublisher(
+  costmap_publisher_ = std::make_unique<Costmap2DPublisher>(
     shared_from_this(),
     layered_costmap_->getCostmap(), global_frame_,
     "costmap", always_send_full_costmap_);
@@ -214,7 +217,7 @@ Costmap2DROS::on_activate(const rclcpp_lifecycle::State & /*state*/)
   }
 
   // Create a thread to handle updating the map
-  stopped_ = false;
+  stopped_ = true;  // to active plugins
   stop_updates_ = false;
   map_update_thread_shutdown_ = false;
 
@@ -252,8 +255,7 @@ Costmap2DROS::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
 {
   RCLCPP_INFO(get_logger(), "Cleaning up");
 
-  delete layered_costmap_;
-  layered_costmap_ = nullptr;
+  layered_costmap_.reset();
 
   tf_listener_.reset();
   tf_buffer_.reset();
@@ -261,20 +263,9 @@ Costmap2DROS::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   footprint_sub_.reset();
   footprint_pub_.reset();
 
-  if (costmap_publisher_ != nullptr) {
-    delete costmap_publisher_;
-    costmap_publisher_ = nullptr;
-  }
-
+  costmap_publisher_.reset();
   clear_costmap_service_.reset();
 
-  return nav2_util::CallbackReturn::SUCCESS;
-}
-
-nav2_util::CallbackReturn
-Costmap2DROS::on_error(const rclcpp_lifecycle::State &)
-{
-  RCLCPP_FATAL(get_logger(), "Lifecycle node entered error state");
   return nav2_util::CallbackReturn::SUCCESS;
 }
 
@@ -298,8 +289,6 @@ Costmap2DROS::getParameters()
   get_parameter("height", map_height_meters_);
   get_parameter("origin_x", origin_x_);
   get_parameter("origin_y", origin_y_);
-  get_parameter("plugin_names", plugin_names_);
-  get_parameter("plugin_types", plugin_types_);
   get_parameter("publish_frequency", map_publish_frequency_);
   get_parameter("resolution", resolution_);
   get_parameter("robot_base_frame", robot_base_frame_);
@@ -309,14 +298,21 @@ Costmap2DROS::getParameters()
   get_parameter("transform_tolerance", transform_tolerance_);
   get_parameter("update_frequency", map_update_frequency_);
   get_parameter("width", map_width_meters_);
+  get_parameter("plugins", plugin_names_);
 
-  // Semantic checks...
+  auto node = shared_from_this();
 
-  // 1. There must be the same number of plugin names and plugin types
-  if (plugin_names_.size() != plugin_types_.size()) {
-    std::string plugin_error = "Size of plugin_names and plugin_type parameters do not match";
-    RCLCPP_ERROR(get_logger(), plugin_error);
-    throw std::runtime_error(plugin_error);
+  if (plugin_names_ == default_plugins_) {
+    for (size_t i = 0; i < default_plugins_.size(); ++i) {
+      nav2_util::declare_parameter_if_not_declared(
+        node, default_plugins_[i] + ".plugin", rclcpp::ParameterValue(default_types_[i]));
+    }
+  }
+  plugin_types_.resize(plugin_names_.size());
+
+  // 1. All plugins must have 'plugin' param defined in their namespace to define the plugin type
+  for (size_t i = 0; i < plugin_names_.size(); ++i) {
+    plugin_types_[i] = nav2_util::get_plugin_type_param(node, plugin_names_[i]);
   }
 
   // 2. The map publish frequency cannot be 0 (to avoid a divde-by-zero)
@@ -441,13 +437,13 @@ Costmap2DROS::updateMap()
       const double yaw = tf2::getYaw(pose.pose.orientation);
       layered_costmap_->updateMap(x, y, yaw);
 
-      geometry_msgs::msg::PolygonStamped footprint;
-      footprint.header.frame_id = global_frame_;
-      footprint.header.stamp = now();
-      transformFootprint(x, y, yaw, padded_footprint_, footprint);
+      auto footprint = std::make_unique<geometry_msgs::msg::PolygonStamped>();
+      footprint->header.frame_id = global_frame_;
+      footprint->header.stamp = now();
+      transformFootprint(x, y, yaw, padded_footprint_, *footprint);
 
       RCLCPP_DEBUG(get_logger(), "Publishing footprint");
-      footprint_pub_->publish(footprint);
+      footprint_pub_->publish(std::move(footprint));
       initialized_ = true;
     }
   }

@@ -170,6 +170,8 @@ class NavTester(Node):
 
     def shutdown(self):
         self.info_msg('Shutting down')
+        self.action_client.destroy()
+
         transition_service = 'lifecycle_manager_navigation/manage_nodes'
         mgr_client = self.create_client(ManageLifecycleNodes, transition_service)
         while not mgr_client.wait_for_service(timeout_sec=1.0):
@@ -179,8 +181,10 @@ class NavTester(Node):
         req.command = ManageLifecycleNodes.Request().SHUTDOWN
         future = mgr_client.call_async(req)
         try:
+            self.info_msg('Shutting down navigation lifecycle manager...')
             rclpy.spin_until_future_complete(self, future)
             future.result()
+            self.info_msg('Shutting down navigation lifecycle manager complete.')
         except Exception as e:
             self.error_msg('Service call failed %r' % (e,))
         transition_service = 'lifecycle_manager_localization/manage_nodes'
@@ -192,27 +196,20 @@ class NavTester(Node):
         req.command = ManageLifecycleNodes.Request().SHUTDOWN
         future = mgr_client.call_async(req)
         try:
+            self.info_msg('Shutting down localization lifecycle manager...')
             rclpy.spin_until_future_complete(self, future)
             future.result()
+            self.info_msg('Shutting down localization lifecycle manager complete')
         except Exception as e:
             self.error_msg('Service call failed %r' % (e,))
 
-
-def test_InitialPose(robot_tester, timeout, retries):
-    robot_tester.initial_pose_received = False
-    retry_count = 1
-    while not robot_tester.initial_pose_received and retry_count <= retries:
-        retry_count += 1
-        robot_tester.info_msg('Setting initial pose')
-        robot_tester.setInitialPose()
-        robot_tester.info_msg('Waiting for amcl_pose to be received')
-        rclpy.spin_once(robot_tester, timeout_sec=timeout)  # wait for poseCallback
-
-    if (robot_tester.initial_pose_received):
-        robot_tester.info_msg('test_InitialPose PASSED')
-    else:
-        robot_tester.info_msg('test_InitialPose FAILED')
-    return robot_tester.initial_pose_received
+    def wait_for_initial_pose(self):
+        self.initial_pose_received = False
+        while not self.initial_pose_received:
+            self.info_msg('Setting initial pose')
+            self.setInitialPose()
+            self.info_msg('Waiting for amcl_pose to be received')
+            rclpy.spin_once(self, timeout_sec=1)
 
 
 def test_RobotMovesToGoal(robot_tester):
@@ -227,18 +224,12 @@ def run_all_tests(robot_tester):
     result = True
     if (result):
         robot_tester.wait_for_node_active('amcl')
-        result = test_InitialPose(robot_tester, timeout=1, retries=10)
-    if (result):
+        robot_tester.wait_for_initial_pose()
         robot_tester.wait_for_node_active('bt_navigator')
-    if (result):
         result = robot_tester.runNavigateAction()
 
-    # TODO(orduno) Test sending the navigation request through the topic interface.
-    #              Need to update tester to receive multiple goal poses.
-    #              Need to fix bug with shutting down while bt_navigator
-    #              is still running.
-    # if (result):
-        # result = test_RobotMovesToGoal(robot_tester)
+    if (result):
+        result = test_RobotMovesToGoal(robot_tester)
 
     # Add more tests here if desired
 
@@ -323,8 +314,14 @@ def main(argv=sys.argv[1:]):
         # stop and shutdown the nav stack to exit cleanly
         tester.shutdown()
 
+    testers[0].info_msg('Done Shutting Down.')
+
     if not passed:
+        testers[0].info_msg('Exiting failed')
         exit(1)
+    else:
+        testers[0].info_msg('Exiting passed')
+        exit(0)
 
 
 if __name__ == '__main__':

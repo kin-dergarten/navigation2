@@ -61,13 +61,18 @@ void MapGridCritic::onInit()
   // Always set to true, but can be overriden by subclasses
   stop_on_failure_ = true;
 
+  auto node = node_.lock();
+  if (!node) {
+    throw std::runtime_error{"Failed to lock node"};
+  }
+
   nav2_util::declare_parameter_if_not_declared(
-    nh_,
+    node,
     dwb_plugin_name_ + "." + name_ + ".aggregation_type",
     rclcpp::ParameterValue(std::string("last")));
 
   std::string aggro_str;
-  nh_->get_parameter(dwb_plugin_name_ + "." + name_ + ".aggregation_type", aggro_str);
+  node->get_parameter(dwb_plugin_name_ + "." + name_ + ".aggregation_type", aggro_str);
   std::transform(aggro_str.begin(), aggro_str.end(), aggro_str.begin(), ::tolower);
   if (aggro_str == "last") {
     aggregationType_ = ScoreAggregationType::Last;
@@ -159,7 +164,7 @@ double MapGridCritic::scorePose(const geometry_msgs::msg::Pose2D & pose)
   return getScore(cell_x, cell_y);
 }
 
-void MapGridCritic::addGridScores(sensor_msgs::msg::PointCloud & pc)
+void MapGridCritic::addCriticVisualization(sensor_msgs::msg::PointCloud & pc)
 {
   sensor_msgs::msg::ChannelFloat32 grid_scores;
   grid_scores.name = name_;
