@@ -23,7 +23,6 @@
 
 using nav2_util::generate_internal_node;
 using std::chrono::seconds;
-using namespace std::chrono_literals;
 using std::make_shared;
 using std::string;
 
