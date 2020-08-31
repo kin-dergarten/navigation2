@@ -86,6 +86,17 @@ TEST(LifeycleCLI, fails_no_node_name)
   SUCCEED();
 }
 
+TEST(LifeycleCLI, fails_wrong_node_name)
+{
+  Handle handle;
+  auto rc = system("ros2 run nav2_util lifecycle_bringup wrong_node_name");
+  (void)rc;
+  sleep(1);
+  // check node didn't mode
+  EXPECT_EQ(handle.node->activated, false);
+  SUCCEED();
+}
+
 TEST(LifeycleCLI, succeeds_node_name)
 {
   Handle handle;
