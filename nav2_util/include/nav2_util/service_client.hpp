@@ -54,9 +54,14 @@ public:
     typename RequestType::SharedPtr & request,
     const std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max())
   {
-    if (!client_->wait_for_service(std::chrono::seconds(1))) {
+    while (!client_->wait_for_service(std::chrono::seconds(1))) {
+      if (!rclcpp::ok()) {
         throw std::runtime_error(
-                service_name_ + " service client not available");
+                service_name_ + " service client: interrupted while waiting for service");
+      }
+      RCLCPP_INFO(
+        node_->get_logger(), "%s service client: waiting for service to appear...",
+        service_name_.c_str());
     }
 
     RCLCPP_DEBUG(
@@ -77,11 +82,14 @@ public:
     typename RequestType::SharedPtr & request,
     typename ResponseType::SharedPtr & response)
   {
-    if (!client_->wait_for_service(std::chrono::seconds(1))) {
-      RCLCPP_ERROR(
-        node_->get_logger(), "%s service client not available",
+    while (!client_->wait_for_service(std::chrono::seconds(1))) {
+      if (!rclcpp::ok()) {
+        throw std::runtime_error(
+                service_name_ + " service client: interrupted while waiting for service");
+      }
+      RCLCPP_INFO(
+        node_->get_logger(), "%s service client: waiting for service to appear...",
         service_name_.c_str());
-      return false;
     }
 
     RCLCPP_DEBUG(
@@ -97,17 +105,6 @@ public:
 
     response = future_result.get();
     return response.get();
-  }
-
-  bool isAvailable(const std::chrono::duration<float> timeout = std::chrono_literals::operator""s(1))
-  {
-    if (!client_->wait_for_service(timeout)) {
-      RCLCPP_INFO(
-          node_->get_logger(), "%s service client not available",
-          service_name_.c_str());
-      return false;
-    }
-    return true;
   }
 
   void wait_for_service(const std::chrono::nanoseconds timeout = std::chrono::nanoseconds::max())

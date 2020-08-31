@@ -71,9 +71,4 @@ uint8_t LifecycleServiceClient::get_state(
   return result->current_state.id;
 }
 
-bool LifecycleServiceClient::isAvailable(const seconds timeout)
-{
-  return get_state_.isAvailable(timeout);
-}
-
 }  // namespace nav2_util
