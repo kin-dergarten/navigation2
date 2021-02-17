@@ -277,20 +277,27 @@ PlannerServer::getPlan(
   const geometry_msgs::msg::PoseStamped & goal,
   const std::string & planner_id)
 {
+  auto goal_transformed = geometry_msgs::msg::PoseStamped();
+  if(start.header.frame_id != goal.header.frame_id) {
+      RCLCPP_INFO(get_logger(), "Transforming goal from %s frame to %s frame.",  goal.header.frame_id.c_str(), start.header.frame_id.c_str());
+      tf_->transform(goal, goal_transformed, start.header.frame_id);
+  }else{
+      goal_transformed = goal;
+  }
   RCLCPP_DEBUG(
-    get_logger(), "Attempting to a find path from (%.2f, %.2f) to "
-    "(%.2f, %.2f).", start.pose.position.x, start.pose.position.y,
-    goal.pose.position.x, goal.pose.position.y);
+          get_logger(), "Attempting to a find path from (%.2f, %.2f) to "
+                        "(%.2f, %.2f).", start.pose.position.x, start.pose.position.y,
+          goal_transformed.pose.position.x, goal_transformed.pose.position.y);
 
   if (planners_.find(planner_id) != planners_.end()) {
-    return planners_[planner_id]->createPlan(start, goal);
+    return planners_[planner_id]->createPlan(start, goal_transformed);
   } else {
     if (planners_.size() == 1 && planner_id.empty()) {
       RCLCPP_WARN_ONCE(
         get_logger(), "No planners specified in action call. "
         "Server will use only plugin %s in server."
         " This warning will appear once.", planner_ids_concat_.c_str());
-      return planners_[planners_.begin()->first]->createPlan(start, goal);
+      return planners_[planners_.begin()->first]->createPlan(start, goal_transformed);
     } else {
       RCLCPP_ERROR(
         get_logger(), "planner %s is not a valid planner. "
