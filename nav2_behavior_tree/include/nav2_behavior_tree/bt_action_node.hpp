@@ -219,8 +219,13 @@ protected:
     auto send_goal_options = typename rclcpp_action::Client<ActionT>::SendGoalOptions();
     send_goal_options.result_callback =
       [this](const typename rclcpp_action::ClientGoalHandle<ActionT>::WrappedResult & result) {
-        result_ = result;
-        goal_result_available_ = true;
+        auto equalGoalID = this->goal_handle_->get_goal_id() == result.goal_id;
+        RCLCPP_DEBUG(node_->get_logger(),
+                    "Equal goal id: %d", equalGoalID);
+        if (this->goal_handle_->get_goal_id() == result.goal_id) {
+          result_ = result;
+          goal_result_available_ = true;
+        }
       };
 
     auto future_goal_handle = action_client_->async_send_goal(goal_, send_goal_options);
