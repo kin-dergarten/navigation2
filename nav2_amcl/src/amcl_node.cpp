@@ -638,6 +638,8 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
     return;
   }
 
+  std::lock_guard<std::mutex> map_lock(map_mutex_);
+
   std::string laser_scan_frame_id = nav2_util::strip_leading_slash(laser_scan->header.frame_id);
   last_laser_received_ts_ = now();
   int laser_index = -1;
@@ -1140,7 +1142,7 @@ AmclNode::mapReceived(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
 void
 AmclNode::handleMapMessage(const nav_msgs::msg::OccupancyGrid & msg)
 {
-  std::lock_guard<std::recursive_mutex> cfl(configuration_mutex_);
+  std::lock_guard<std::mutex> map_lock(map_mutex_);
 
   RCLCPP_INFO(
     get_logger(), "Received a %d X %d map @ %.3f m/pix",
@@ -1155,7 +1157,7 @@ AmclNode::handleMapMessage(const nav_msgs::msg::OccupancyGrid & msg)
       global_frame_id_.c_str());
   }
   freeMapDependentMemory();
-  map_ = convertMap(msg);
+  map_ = convertMap(msg);;
 
 #if NEW_UNIFORM_SAMPLING
   createFreeSpaceVector();
@@ -1179,9 +1181,9 @@ AmclNode::createFreeSpaceVector()
 void
 AmclNode::freeMapDependentMemory()
 {
-  if (map_ != NULL) {
+  if (map_ != nullptr) {
     map_free(map_);
-    map_ = NULL;
+    map_ = nullptr;
   }
 
   // Clear queued laser objects because they hold pointers to the existing
