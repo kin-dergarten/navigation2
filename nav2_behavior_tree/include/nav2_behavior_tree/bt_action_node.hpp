@@ -204,6 +204,11 @@ protected:
       return false;
     }
 
+    // No need to cancel the goal if goal handle is invalid
+    if (!goal_handle_) {
+      return false;
+    }
+
     rclcpp::spin_some(node_);
     auto status = goal_handle_->get_status();
 
