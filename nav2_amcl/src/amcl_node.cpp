@@ -83,6 +83,10 @@ AmclNode::AmclNode()
     "This is the alpha5 parameter", "These are additional constraints for alpha5");
 
   add_parameter(
+   "alpha_recovery_scale", rclcpp::ParameterValue(2.0),
+   "Scaler used to increase alpha noise parameters for recovery");
+
+  add_parameter(
     "base_frame_id", rclcpp::ParameterValue(std::string("base_footprint")),
     "Which frame to use for the robot base");
 
@@ -352,6 +356,7 @@ AmclNode::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
 
   // Odometry
   motion_model_.reset();
+  recovery_motion_model_.reset();
 
   // Particle Filter
   pf_free(pf_);
@@ -683,7 +688,15 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
       }
     }
     if (lasers_update_[laser_index]) {
-      motion_model_->odometryUpdate(pf_, pose, delta);
+      if (force_update_) {
+        // instead of sampling from motion model we just add gaussian noise for no-motion update
+        // use update thresholds as base values for noise calculation
+        RCLCPP_INFO(get_logger(), "Performing_noise_only_update");
+        pf_vector_t artificial_delta = {d_thresh_, d_thresh_, a_thresh_};
+        recovery_motion_model_->noiseOnlyUpdate(pf_, pose, artificial_delta);
+      } else {
+        motion_model_->odometryUpdate(pf_, pose, delta);
+      }
     }
     force_update_ = false;
   }
@@ -1057,6 +1070,7 @@ AmclNode::initParameters()
   get_parameter("alpha3", alpha3_);
   get_parameter("alpha4", alpha4_);
   get_parameter("alpha5", alpha5_);
+  get_parameter("alpha_recovery_scale", alpha_recovery_scale_);
   get_parameter("base_frame_id", base_frame_id_);
   get_parameter("beam_skip_distance", beam_skip_distance_);
   get_parameter("beam_skip_error_threshold", beam_skip_error_threshold_);
@@ -1310,6 +1324,14 @@ AmclNode::initOdometry()
   motion_model_ = std::unique_ptr<nav2_amcl::MotionModel>(
     nav2_amcl::MotionModel::createMotionModel(
       robot_model_type_, alpha1_, alpha2_, alpha3_, alpha4_, alpha5_));
+  recovery_motion_model_ = std::unique_ptr<nav2_amcl::MotionModel>(
+   nav2_amcl::MotionModel::createMotionModel(
+    robot_model_type_,
+    alpha1_ * alpha_recovery_scale_,
+    alpha2_ * alpha_recovery_scale_,
+    alpha3_ * alpha_recovery_scale_,
+    alpha4_ * alpha_recovery_scale_,
+    alpha5_ * alpha_recovery_scale_));
 
   latest_odom_pose_ = geometry_msgs::msg::PoseStamped();
 }

@@ -214,6 +214,7 @@ protected:
    */
   void initOdometry();
   std::unique_ptr<nav2_amcl::MotionModel> motion_model_;
+  std::unique_ptr<nav2_amcl::MotionModel> recovery_motion_model_;
   geometry_msgs::msg::PoseStamped latest_odom_pose_;
   geometry_msgs::msg::PoseWithCovarianceStamped last_published_pose_;
   double init_pose_[3];  // Initial robot pose
@@ -334,6 +335,7 @@ protected:
   double alpha3_;
   double alpha4_;
   double alpha5_;
+  double alpha_recovery_scale_;
   std::string base_frame_id_;
   double beam_skip_distance_;
   double beam_skip_error_threshold_;
