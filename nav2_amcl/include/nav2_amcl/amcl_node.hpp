@@ -205,8 +205,21 @@ protected:
     const std::shared_ptr<std_srvs::srv::Empty::Request> request,
     std::shared_ptr<std_srvs::srv::Empty::Response> response);
 
+
+  // Let amcl update particles with artificial noise without requiring motion
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr noise_only_update_srv_;
+  /*
+   * @brief Request an AMCL update even though the robot hasn't moved and use artificial noise
+   */
+  void noiseOnlyUpdateCallback(
+   const std::shared_ptr<rmw_request_id_t> request_header,
+   const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+   std::shared_ptr<std_srvs::srv::Empty::Response> response);
+
   // Nomotion update control. Used to temporarily let amcl update samples even when no motion occurs
   std::atomic<bool> force_update_{false};
+  // Nomotion update uses artificial noise to model increased uncertainty
+  std::atomic<bool> noise_only_update_{false};
 
   // Odometry
   /*

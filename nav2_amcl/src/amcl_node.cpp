@@ -334,6 +334,7 @@ AmclNode::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   // don't continue to process incoming messages
   global_loc_srv_.reset();
   nomotion_update_srv_.reset();
+  noise_only_update_srv_.reset();
   initial_pose_sub_.reset();
   laser_scan_connection_.disconnect();
   laser_scan_filter_.reset();
@@ -367,6 +368,7 @@ AmclNode::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   lasers_update_.clear();
   frame_to_laser_.clear();
   force_update_ = true;
+  noise_only_update_ = false;
 
   if (set_initial_pose_) {
     set_parameter(
@@ -530,6 +532,17 @@ AmclNode::nomotionUpdateCallback(
 }
 
 void
+AmclNode::noiseOnlyUpdateCallback(
+ const std::shared_ptr<rmw_request_id_t>/*request_header*/,
+ const std::shared_ptr<std_srvs::srv::Empty::Request>/*requ*/,
+ std::shared_ptr<std_srvs::srv::Empty::Response>/*resp*/)
+ {
+   RCLCPP_INFO(get_logger(), "Requesting noise only update");
+   force_update_ = true;
+   noise_only_update_ = true;
+ }
+
+void
 AmclNode::initialPoseReceived(geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
 {
   RCLCPP_INFO(get_logger(), "initialPoseReceived");
@@ -688,12 +701,13 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
       }
     }
     if (lasers_update_[laser_index]) {
-      if (force_update_) {
+      if (noise_only_update_) {
         // instead of sampling from motion model we just add gaussian noise for no-motion update
         // use update thresholds as base values for noise calculation
         RCLCPP_INFO(get_logger(), "Performing_noise_only_update");
         pf_vector_t artificial_delta = {d_thresh_, d_thresh_, a_thresh_};
         recovery_motion_model_->noiseOnlyUpdate(pf_, pose, artificial_delta);
+        noise_only_update_ = false;
       } else {
         motion_model_->odometryUpdate(pf_, pose, delta);
       }
@@ -1298,6 +1312,10 @@ AmclNode::initServices()
   nomotion_update_srv_ = create_service<std_srvs::srv::Empty>(
     "request_nomotion_update",
     std::bind(&AmclNode::nomotionUpdateCallback, this, _1, _2, _3));
+
+  noise_only_update_srv_ = create_service<std_srvs::srv::Empty>(
+    "request_noise_only_update",
+    std::bind(&AmclNode::noiseOnlyUpdateCallback, this, _1, _2, _3));
 }
 
 void
