@@ -216,8 +216,20 @@ protected:
    const std::shared_ptr<std_srvs::srv::Empty::Request> request,
    std::shared_ptr<std_srvs::srv::Empty::Response> response);
 
+  // Try to recover from local error (e.g. wheel slip after emergency stop) by adding noise and forcing some updates
+  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr local_recovery_srv_;
+  /*
+   * @brief Request local recovery that adds noise and forces some filter updates
+   */
+  void localRecoveryCallback(
+   const std::shared_ptr<rmw_request_id_t> request_header,
+   const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+   std::shared_ptr<std_srvs::srv::Empty::Response> response);
+
   // Nomotion update control. Used to temporarily let amcl update samples even when no motion occurs
   std::atomic<bool> force_update_{false};
+  // How often a Nomotion Update should be performed (used for local recovery)
+  std::atomic<int> force_update_count_{0};
   // Nomotion update uses artificial noise to model increased uncertainty
   std::atomic<bool> noise_only_update_{false};
 
@@ -348,7 +360,8 @@ protected:
   double alpha3_;
   double alpha4_;
   double alpha5_;
-  double alpha_recovery_scale_;
+  double recovery_alpha_scale_;
+  int recovery_scan_count_;
   std::string base_frame_id_;
   double beam_skip_distance_;
   double beam_skip_error_threshold_;

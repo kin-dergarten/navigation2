@@ -83,8 +83,12 @@ AmclNode::AmclNode()
     "This is the alpha5 parameter", "These are additional constraints for alpha5");
 
   add_parameter(
-   "alpha_recovery_scale", rclcpp::ParameterValue(2.0),
-   "Scaler used to increase alpha noise parameters for recovery");
+   "recovery_alpha_scale", rclcpp::ParameterValue(2.0),
+   "Scaler used to increase alpha noise parameters for local recovery and noise only update");
+
+  add_parameter(
+   "recovery_scan_count", rclcpp::ParameterValue(1),
+   "How many subsequent scans should be processes in local recovery");
 
   add_parameter(
     "base_frame_id", rclcpp::ParameterValue(std::string("base_footprint")),
@@ -334,6 +338,7 @@ AmclNode::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   // don't continue to process incoming messages
   global_loc_srv_.reset();
   nomotion_update_srv_.reset();
+  local_recovery_srv_.reset();
   noise_only_update_srv_.reset();
   initial_pose_sub_.reset();
   laser_scan_connection_.disconnect();
@@ -368,6 +373,7 @@ AmclNode::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   lasers_update_.clear();
   frame_to_laser_.clear();
   force_update_ = true;
+  force_update_count_ = 0;
   noise_only_update_ = false;
 
   if (set_initial_pose_) {
@@ -541,6 +547,20 @@ AmclNode::noiseOnlyUpdateCallback(
    force_update_ = true;
    noise_only_update_ = true;
  }
+
+void
+AmclNode::localRecoveryCallback(
+ const std::shared_ptr<rmw_request_id_t>/*request_header*/,
+ const std::shared_ptr<std_srvs::srv::Empty::Request>/*requ*/,
+ std::shared_ptr<std_srvs::srv::Empty::Response>/*resp*/)
+{
+  // TODO(gotzmann): create custom msg and read values form request (add noise, scaler, number of updates)
+  RCLCPP_INFO(get_logger(), "Requesting local recovery");
+  noise_only_update_ = true;
+  force_update_count_ = recovery_scan_count_;
+  force_update_ = true;
+
+}
 
 void
 AmclNode::initialPoseReceived(geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg)
@@ -809,6 +829,11 @@ bool AmclNode::shouldUpdateFilter(const pf_vector_t pose, pf_vector_t & delta)
   bool update = fabs(delta.v[0]) > d_thresh_ ||
     fabs(delta.v[1]) > d_thresh_ ||
     fabs(delta.v[2]) > a_thresh_;
+
+  if (force_update_count_ > 0) {
+    force_update_ = true;
+    force_update_count_--;
+  }
   update = update || force_update_;
   return update;
 }
@@ -1084,7 +1109,8 @@ AmclNode::initParameters()
   get_parameter("alpha3", alpha3_);
   get_parameter("alpha4", alpha4_);
   get_parameter("alpha5", alpha5_);
-  get_parameter("alpha_recovery_scale", alpha_recovery_scale_);
+  get_parameter("recovery_alpha_scale", recovery_alpha_scale_);
+  get_parameter("recovery_scan_count", recovery_scan_count_);
   get_parameter("base_frame_id", base_frame_id_);
   get_parameter("beam_skip_distance", beam_skip_distance_);
   get_parameter("beam_skip_error_threshold", beam_skip_error_threshold_);
@@ -1316,6 +1342,10 @@ AmclNode::initServices()
   noise_only_update_srv_ = create_service<std_srvs::srv::Empty>(
     "request_noise_only_update",
     std::bind(&AmclNode::noiseOnlyUpdateCallback, this, _1, _2, _3));
+
+  local_recovery_srv_ = create_service<std_srvs::srv::Empty>(
+    "request_local_recovery",
+    std::bind(&AmclNode::localRecoveryCallback, this, _1, _2, _3));
 }
 
 void
@@ -1345,11 +1375,11 @@ AmclNode::initOdometry()
   recovery_motion_model_ = std::unique_ptr<nav2_amcl::MotionModel>(
    nav2_amcl::MotionModel::createMotionModel(
     robot_model_type_,
-    alpha1_ * alpha_recovery_scale_,
-    alpha2_ * alpha_recovery_scale_,
-    alpha3_ * alpha_recovery_scale_,
-    alpha4_ * alpha_recovery_scale_,
-    alpha5_ * alpha_recovery_scale_));
+    alpha1_ * recovery_alpha_scale_,
+    alpha2_ * recovery_alpha_scale_,
+    alpha3_ * recovery_alpha_scale_,
+    alpha4_ * recovery_alpha_scale_,
+    alpha5_ * recovery_alpha_scale_));
 
   latest_odom_pose_ = geometry_msgs::msg::PoseStamped();
 }
