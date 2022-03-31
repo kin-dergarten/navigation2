@@ -226,12 +226,14 @@ protected:
    const std::shared_ptr<std_srvs::srv::Empty::Request> request,
    std::shared_ptr<std_srvs::srv::Empty::Response> response);
 
-  // Nomotion update control. Used to temporarily let amcl update samples even when no motion occurs
-  std::atomic<bool> force_update_{false};
-  // How often a Nomotion Update should be performed (used for local recovery)
-  std::atomic<int> force_update_count_{0};
-  // Nomotion update uses artificial noise to model increased uncertainty
+  // How many recovery runs (noise_only_update + n x nomotion updates) should be performed for local recovery
+  std::atomic<int> recovery_run_count_{0};
+  // How many nomotion update should be performed per run in local recovery
+  std::atomic<int> recovery_scan_count_{0};
+  // Force an update with artificial noise to model increased uncertainty for next scan
   std::atomic<bool> noise_only_update_{false};
+  // Force update of samples even when no motion occurs for next scan
+  std::atomic<bool> force_update_{false};
 
   // Odometry
   /*
@@ -360,8 +362,9 @@ protected:
   double alpha3_;
   double alpha4_;
   double alpha5_;
-  double recovery_alpha_scale_;
-  int recovery_scan_count_;
+  double recovery_noise_scaler_;
+  int recovery_number_of_runs_;
+  int recovery_scan_updates_per_run_;
   std::string base_frame_id_;
   double beam_skip_distance_;
   double beam_skip_error_threshold_;

@@ -83,12 +83,16 @@ AmclNode::AmclNode()
     "This is the alpha5 parameter", "These are additional constraints for alpha5");
 
   add_parameter(
-   "recovery_alpha_scale", rclcpp::ParameterValue(2.0),
+   "local_recovery_noise_scaler", rclcpp::ParameterValue(2.0),
    "Scaler used to increase alpha noise parameters for local recovery and noise only update");
 
   add_parameter(
-   "recovery_scan_count", rclcpp::ParameterValue(1),
-   "How many subsequent scans should be processes in local recovery");
+   "local_recovery_number_of_runs", rclcpp::ParameterValue(1),
+   "How many subsequent recovery runs (add noise + n x scan update) should be performed in local recovery");
+
+  add_parameter(
+   "local_recovery_scan_updates_per_run", rclcpp::ParameterValue(1),
+   "How many subsequent scans should be processes in each run of local recovery");
 
   add_parameter(
     "base_frame_id", rclcpp::ParameterValue(std::string("base_footprint")),
@@ -373,8 +377,9 @@ AmclNode::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   lasers_update_.clear();
   frame_to_laser_.clear();
   force_update_ = true;
-  force_update_count_ = 0;
   noise_only_update_ = false;
+  recovery_run_count_ = 0;
+  recovery_scan_count_ = 0;
 
   if (set_initial_pose_) {
     set_parameter(
@@ -554,12 +559,8 @@ AmclNode::localRecoveryCallback(
  const std::shared_ptr<std_srvs::srv::Empty::Request>/*requ*/,
  std::shared_ptr<std_srvs::srv::Empty::Response>/*resp*/)
 {
-  // TODO(gotzmann): create custom msg and read values form request (add noise, scaler, number of updates)
   RCLCPP_INFO(get_logger(), "Requesting local recovery");
-  noise_only_update_ = true;
-  force_update_count_ = recovery_scan_count_;
-  force_update_ = true;
-
+  recovery_run_count_ = recovery_number_of_runs_;
 }
 
 void
@@ -724,7 +725,7 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
       if (noise_only_update_) {
         // instead of sampling from motion model we just add gaussian noise for no-motion update
         // use update thresholds as base values for noise calculation
-        RCLCPP_INFO(get_logger(), "Performing_noise_only_update");
+        RCLCPP_INFO(get_logger(), "Performing Noise Only Update");
         pf_vector_t artificial_delta = {d_thresh_, d_thresh_, a_thresh_};
         recovery_motion_model_->noiseOnlyUpdate(pf_, pose, artificial_delta);
         noise_only_update_ = false;
@@ -830,10 +831,20 @@ bool AmclNode::shouldUpdateFilter(const pf_vector_t pose, pf_vector_t & delta)
     fabs(delta.v[1]) > d_thresh_ ||
     fabs(delta.v[2]) > a_thresh_;
 
-  if (force_update_count_ > 0) {
+
+  if (recovery_scan_count_ > 0) {
+    RCLCPP_INFO(get_logger(), "Performing Nomotion Update");
     force_update_ = true;
-    force_update_count_--;
+    recovery_scan_count_--;
   }
+  else if (recovery_run_count_ > 0) {
+    recovery_scan_count_ = recovery_scan_updates_per_run_;
+    noise_only_update_ = true;
+    force_update_ = true;
+    recovery_scan_count_--;
+    recovery_run_count_--;
+  }
+
   update = update || force_update_;
   return update;
 }
@@ -1109,8 +1120,9 @@ AmclNode::initParameters()
   get_parameter("alpha3", alpha3_);
   get_parameter("alpha4", alpha4_);
   get_parameter("alpha5", alpha5_);
-  get_parameter("recovery_alpha_scale", recovery_alpha_scale_);
-  get_parameter("recovery_scan_count", recovery_scan_count_);
+  get_parameter("local_recovery_noise_scaler", recovery_noise_scaler_);
+  get_parameter("local_recovery_number_of_runs", recovery_number_of_runs_);
+  get_parameter("local_recovery_scan_updates_per_run", recovery_scan_updates_per_run_);
   get_parameter("base_frame_id", base_frame_id_);
   get_parameter("beam_skip_distance", beam_skip_distance_);
   get_parameter("beam_skip_error_threshold", beam_skip_error_threshold_);
@@ -1375,11 +1387,11 @@ AmclNode::initOdometry()
   recovery_motion_model_ = std::unique_ptr<nav2_amcl::MotionModel>(
    nav2_amcl::MotionModel::createMotionModel(
     robot_model_type_,
-    alpha1_ * recovery_alpha_scale_,
-    alpha2_ * recovery_alpha_scale_,
-    alpha3_ * recovery_alpha_scale_,
-    alpha4_ * recovery_alpha_scale_,
-    alpha5_ * recovery_alpha_scale_));
+    alpha1_ * recovery_noise_scaler_,
+    alpha2_ * recovery_noise_scaler_,
+    alpha3_ * recovery_noise_scaler_,
+    alpha4_ * recovery_noise_scaler_,
+    alpha5_ * recovery_noise_scaler_));
 
   latest_odom_pose_ = geometry_msgs::msg::PoseStamped();
 }
