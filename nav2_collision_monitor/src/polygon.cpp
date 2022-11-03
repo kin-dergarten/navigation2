@@ -21,8 +21,12 @@
 #include "geometry_msgs/msg/point32.hpp"
 
 #include "nav2_util/node_utils.hpp"
+#include "nav2_util/robot_utils.hpp"
 
 #include "nav2_collision_monitor/kinematics.hpp"
+#include "nav2_costmap_2d/footprint.hpp"
+#include "tf2/utils.h"
+#include "tf2/time.h"
 
 namespace nav2_collision_monitor
 {
@@ -61,8 +65,7 @@ bool Polygon::configure()
 
   if (!footprint_topic.empty()) {
     footprint_sub_ = std::make_unique<nav2_costmap_2d::FootprintSubscriber>(
-      node, footprint_topic, *tf_buffer_,
-      base_frame_id_, tf2::durationToSec(transform_tolerance_));
+      node, footprint_topic, tf2::durationToSec(transform_tolerance_));
   }
 
   if (visualize_) {
@@ -133,9 +136,13 @@ void Polygon::updatePolygon()
 {
   if (footprint_sub_ != nullptr) {
     // Get latest robot footprint from footprint subscriber
+    std::vector<geometry_msgs::msg::Point> footprint_vec_raw;
     std::vector<geometry_msgs::msg::Point> footprint_vec;
     std_msgs::msg::Header footprint_header;
-    footprint_sub_->getFootprintInRobotFrame(footprint_vec, footprint_header);
+    //TODO: make footprint frame id selectable as parameter
+    footprint_header.frame_id="map";
+    footprint_sub_->getFootprint(footprint_vec_raw);
+    transformFootprintInRobotFrame(footprint_vec_raw, footprint_vec, footprint_header);
 
     std::size_t new_size = footprint_vec.size();
     poly_.resize(new_size);
@@ -375,6 +382,33 @@ inline bool Polygon::isPointInside(const Point & point) const
     i = j;
   }
   return res;
+}
+
+bool Polygon::transformFootprintInRobotFrame(
+    std::vector<geometry_msgs::msg::Point> & input_footprint,
+    std::vector<geometry_msgs::msg::Point> & transformed_footprint,
+    std_msgs::msg::Header & footprint_header)
+{
+  geometry_msgs::msg::PoseStamped current_pose;
+  if (!nav2_util::getCurrentPose(
+          current_pose, *tf_buffer_, footprint_header.frame_id, base_frame_id_,
+          tf2::durationToSec(transform_tolerance_)))
+  {
+    return false;
+  }
+
+  double x = current_pose.pose.position.x;
+  double y = current_pose.pose.position.y;
+  double theta = tf2::getYaw(current_pose.pose.orientation);
+
+  std::vector<geometry_msgs::msg::Point> temp;
+  nav2_costmap_2d::transformFootprint(-x, -y, 0, input_footprint, temp);
+  nav2_costmap_2d::transformFootprint(0, 0, -theta, temp, transformed_footprint);
+
+  footprint_header.frame_id = base_frame_id_;
+  footprint_header.stamp = current_pose.header.stamp;
+
+  return true;
 }
 
 }  // namespace nav2_collision_monitor

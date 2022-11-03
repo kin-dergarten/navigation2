@@ -163,6 +163,16 @@ protected:
    */
   bool isPointInside(const Point & point) const;
 
+  /**
+   * @brief helper function to mimic new footprint_subscriber function
+   * @param
+   * @return
+   */
+  bool transformFootprintInRobotFrame(
+      std::vector<geometry_msgs::msg::Point> & input_footprint,
+      std::vector<geometry_msgs::msg::Point> & transformed_footprint,
+      std_msgs::msg::Header & footprint_header);
+
   // ----- Variables -----
 
   /// @brief Collision Monitor node
