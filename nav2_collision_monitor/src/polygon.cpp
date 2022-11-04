@@ -235,7 +235,9 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
       node, polygon_name_ + ".action_type", rclcpp::PARAMETER_STRING);
     const std::string at_str =
       node->get_parameter(polygon_name_ + ".action_type").as_string();
-    if (at_str == "stop") {
+    if (at_str == "emg_stop") {
+      action_type_ = EMG_STOP;
+    } else if (at_str == "stop") {
       action_type_ = STOP;
     } else if (at_str == "slowdown") {
       action_type_ = SLOWDOWN;

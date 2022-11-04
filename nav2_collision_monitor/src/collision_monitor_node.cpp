@@ -55,9 +55,10 @@ CollisionMonitor::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
   std::string cmd_vel_in_topic;
   std::string cmd_vel_out_topic;
+  std::string emg_stop_topic;
 
   // Obtaining ROS parameters
-  if (!getParameters(cmd_vel_in_topic, cmd_vel_out_topic)) {
+  if (!getParameters(cmd_vel_in_topic, cmd_vel_out_topic, emg_stop_topic)) {
     return nav2_util::CallbackReturn::FAILURE;
   }
 
@@ -66,6 +67,8 @@ CollisionMonitor::on_configure(const rclcpp_lifecycle::State & /*state*/)
     std::bind(&CollisionMonitor::cmdVelInCallback, this, std::placeholders::_1));
   cmd_vel_out_pub_ = this->create_publisher<geometry_msgs::msg::Twist>(
     cmd_vel_out_topic, 1);
+  emg_stop_pub_ = this->create_publisher<std_msgs::msg::Bool>(
+      emg_stop_topic, 1);
 
   return nav2_util::CallbackReturn::SUCCESS;
 }
@@ -77,6 +80,7 @@ CollisionMonitor::on_activate(const rclcpp_lifecycle::State & /*state*/)
 
   // Activating lifecycle publisher
   cmd_vel_out_pub_->on_activate();
+  emg_stop_pub_->on_activate();
 
   // Activating polygons
   for (std::shared_ptr<Polygon> polygon : polygons_) {
@@ -114,6 +118,7 @@ CollisionMonitor::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
 
   // Deactivating lifecycle publishers
   cmd_vel_out_pub_->on_deactivate();
+  emg_stop_pub_->on_deactivate();
 
   // Destroying bond connection
   destroyBond();
@@ -128,6 +133,7 @@ CollisionMonitor::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
 
   cmd_vel_in_sub_.reset();
   cmd_vel_out_pub_.reset();
+  emg_stop_pub_.reset();
 
   polygons_.clear();
   sources_.clear();
@@ -176,7 +182,8 @@ void CollisionMonitor::publishVelocity(const Action & robot_action)
 
 bool CollisionMonitor::getParameters(
   std::string & cmd_vel_in_topic,
-  std::string & cmd_vel_out_topic)
+  std::string & cmd_vel_out_topic,
+  std::string & emg_stop_topic)
 {
   std::string base_frame_id, odom_frame_id;
   tf2::Duration transform_tolerance;
@@ -190,6 +197,9 @@ bool CollisionMonitor::getParameters(
   nav2_util::declare_parameter_if_not_declared(
     node, "cmd_vel_out_topic", rclcpp::ParameterValue("cmd_vel"));
   cmd_vel_out_topic = get_parameter("cmd_vel_out_topic").as_string();
+  nav2_util::declare_parameter_if_not_declared(
+      node, "emg_stop_topic", rclcpp::ParameterValue("emg_stop"));
+  emg_stop_topic = get_parameter("emg_stop_topic").as_string();
 
   nav2_util::declare_parameter_if_not_declared(
     node, "base_frame_id", rclcpp::ParameterValue("base_footprint"));
@@ -350,13 +360,14 @@ void CollisionMonitor::process(const Velocity & cmd_vel_in)
   std::shared_ptr<Polygon> action_polygon;
 
   for (std::shared_ptr<Polygon> polygon : polygons_) {
-    if (robot_action.action_type == STOP) {
+    //TODO: we might only want to break on EMG_STOP and implement priories on a different level
+    if (robot_action.action_type == STOP || robot_action.action_type == EMG_STOP ) {
       // If robot already should stop, do nothing
       break;
     }
 
     const ActionType at = polygon->getActionType();
-    if (at == STOP || at == SLOWDOWN) {
+    if (at == STOP || at == EMG_STOP || at == SLOWDOWN) {
       // Process STOP/SLOWDOWN for the selected polygon
       if (processStopSlowdown(polygon, collision_points, cmd_vel_in, robot_action)) {
         action_polygon = polygon;
@@ -372,6 +383,13 @@ void CollisionMonitor::process(const Velocity & cmd_vel_in)
   if (robot_action.action_type != robot_action_prev_.action_type) {
     // Report changed robot behavior
     printAction(robot_action, action_polygon);
+  }
+
+  // Send emergency stop message if needed
+  if (robot_action.action_type == EMG_STOP) {
+    std_msgs::msg::Bool emg_stop_msg;
+    emg_stop_msg.data = (true);
+    emg_stop_pub_->publish(emg_stop_msg);
   }
 
   // Publish requred robot velocity
@@ -390,13 +408,22 @@ bool CollisionMonitor::processStopSlowdown(
   Action & robot_action) const
 {
   if (polygon->getPointsInside(collision_points) > polygon->getMaxPoints()) {
-    if (polygon->getActionType() == STOP) {
+    if (polygon->getActionType() == STOP || polygon->getActionType() == EMG_STOP) {
       // Setting up zero velocity for STOP model
-      robot_action.action_type = STOP;
+      robot_action.action_type = polygon->getActionType();
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
       robot_action.req_vel.tw = 0.0;
       return true;
+//    }
+//    //TODO: if no other changes needed there is no use for a separate case for emergency stop here
+//    else if (polygon->getActionType() == EMG_STOP) {
+//      // Setting up zero velocity for EMG_STOP model
+//      robot_action.action_type = EMG_STOP;
+//      robot_action.req_vel.x = 0.0;
+//      robot_action.req_vel.y = 0.0;
+//      robot_action.req_vel.tw = 0.0;
+//      return true;
     } else {  // SLOWDOWN
       const Velocity safe_vel = velocity * polygon->getSlowdownRatio();
       // Check that currently calculated velocity is safer than
@@ -446,7 +473,13 @@ void CollisionMonitor::printAction(
       get_logger(),
       "Robot to stop due to %s polygon",
       action_polygon->getName().c_str());
-  } else if (robot_action.action_type == SLOWDOWN) {
+  } else if (robot_action.action_type == EMG_STOP) {
+    RCLCPP_INFO(
+        get_logger(),
+        "Robot sending Emergency Stop due to %s polygon",
+        action_polygon->getName().c_str());
+  }
+  else if (robot_action.action_type == SLOWDOWN) {
     RCLCPP_INFO(
       get_logger(),
       "Robot to slowdown for %f percents due to %s polygon",
