@@ -385,12 +385,15 @@ void CollisionMonitor::process(const Velocity & cmd_vel_in)
     printAction(robot_action, action_polygon);
   }
 
-  // Send emergency stop message if needed
+  // Send emergency stop message
+  std_msgs::msg::Bool emg_stop_msg;
   if (robot_action.action_type == EMG_STOP) {
-    std_msgs::msg::Bool emg_stop_msg;
     emg_stop_msg.data = (true);
-    emg_stop_pub_->publish(emg_stop_msg);
   }
+  else {
+    emg_stop_msg.data = (false);
+  }
+  emg_stop_pub_->publish(emg_stop_msg);
 
   // Publish requred robot velocity
   publishVelocity(robot_action);
