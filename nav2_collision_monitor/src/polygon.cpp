@@ -38,7 +38,7 @@ Polygon::Polygon(
   const std::string & base_frame_id,
   const tf2::Duration & transform_tolerance)
 : node_(node), polygon_name_(polygon_name), action_type_(DO_NOTHING),
-  slowdown_ratio_(0.0), footprint_sub_(nullptr), tf_buffer_(tf_buffer),
+  slowdown_ratio_(0.0), enable_(false), footprint_sub_(nullptr), tf_buffer_(tf_buffer),
   base_frame_id_(base_frame_id), transform_tolerance_(transform_tolerance)
 {
   RCLCPP_INFO(logger_, "[%s]: Creating Polygon", polygon_name_.c_str());
@@ -90,6 +90,7 @@ bool Polygon::configure()
 
 void Polygon::activate()
 {
+  enable_ = true;
   if (visualize_) {
     polygon_pub_->on_activate();
   }
@@ -97,6 +98,7 @@ void Polygon::activate()
 
 void Polygon::deactivate()
 {
+  enable_ = false;
   if (visualize_) {
     polygon_pub_->on_deactivate();
   }
@@ -120,6 +122,11 @@ int Polygon::getMaxPoints() const
 double Polygon::getSlowdownRatio() const
 {
   return slowdown_ratio_;
+}
+
+bool Polygon::isEnabled() const
+{
+  return enable_;
 }
 
 double Polygon::getTimeBeforeCollision() const

@@ -69,6 +69,9 @@ CollisionMonitor::on_configure(const rclcpp_lifecycle::State & /*state*/)
     cmd_vel_out_topic, 1);
   emg_stop_pub_ = this->create_publisher<std_msgs::msg::Bool>(
       emg_stop_topic, 1);
+  change_field_state_srv_ = this->create_service<nav2_collision_monitor::srv::ChangeFieldState>(
+      "change_field_state", std::bind(&CollisionMonitor::changeFieldStateCallback, this, std::placeholders::_1,
+                                      std::placeholders::_2, std::placeholders::_3));
 
   return nav2_util::CallbackReturn::SUCCESS;
 }
@@ -82,7 +85,7 @@ CollisionMonitor::on_activate(const rclcpp_lifecycle::State & /*state*/)
   cmd_vel_out_pub_->on_activate();
   emg_stop_pub_->on_activate();
 
-  // Activating polygons
+  // Activating all polygons per default
   for (std::shared_ptr<Polygon> polygon : polygons_) {
     polygon->activate();
   }
@@ -134,6 +137,8 @@ CollisionMonitor::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   cmd_vel_in_sub_.reset();
   cmd_vel_out_pub_.reset();
   emg_stop_pub_.reset();
+  change_field_state_srv_.reset();
+
 
   polygons_.clear();
   sources_.clear();
@@ -155,6 +160,38 @@ CollisionMonitor::on_shutdown(const rclcpp_lifecycle::State & /*state*/)
 void CollisionMonitor::cmdVelInCallback(geometry_msgs::msg::Twist::ConstSharedPtr msg)
 {
   process({msg->linear.x, msg->linear.y, msg->angular.z});
+}
+
+void CollisionMonitor::changeFieldStateCallback(const std::shared_ptr<rmw_request_id_t> /*request_header*/,
+                                                const std::shared_ptr<nav2_collision_monitor::srv::ChangeFieldState::Request> request,
+                                                std::shared_ptr<nav2_collision_monitor::srv::ChangeFieldState::Response> response)
+{
+  std::string field_name = request->field_name;
+  RCLCPP_INFO(get_logger(), "Got request to change field state of field %s", field_name.c_str());
+
+  for (std::shared_ptr<Polygon> polygon : polygons_) {
+    auto has_requested_field_name = polygon->getName().compare(field_name) != 0;
+    if (has_requested_field_name)
+    {
+      auto needs_to_be_enabled = !polygon->isEnabled() && request->enable;
+      auto needs_to_be_disabled = polygon->isEnabled() && !request->enable;
+      if (needs_to_be_enabled) {
+        polygon->activate();
+        RCLCPP_INFO( get_logger(), "Activating field %s", polygon->getName().c_str());
+      }
+      else if (needs_to_be_disabled) {
+        polygon->deactivate();
+        RCLCPP_INFO( get_logger(), "Deactivating field %s", polygon->getName().c_str());
+      }
+      response->result = true;
+      response->result_string="OK";
+      return;
+    }
+  }
+
+  response->result = false;
+  response->result_string="unknown field";
+  RCLCPP_ERROR( get_logger(), "Unknown field %s, doing nothing", field_name.c_str());
 }
 
 void CollisionMonitor::publishVelocity(const Action & robot_action)
@@ -364,6 +401,11 @@ void CollisionMonitor::process(const Velocity & cmd_vel_in)
     if (robot_action.action_type == STOP || robot_action.action_type == EMG_STOP ) {
       // If robot already should stop, do nothing
       break;
+    }
+
+    if (!polygon->isEnabled()){
+      // skip fields that are not enabled
+      continue ;
     }
 
     const ActionType at = polygon->getActionType();
