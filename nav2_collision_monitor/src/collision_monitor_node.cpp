@@ -399,8 +399,7 @@ void CollisionMonitor::process(const Velocity & cmd_vel_in)
   std::shared_ptr<Polygon> action_polygon;
 
   for (std::shared_ptr<Polygon> polygon : polygons_) {
-    //TODO: we might only want to break on EMG_STOP and implement priories on a different level
-    if (robot_action.action_type == STOP || robot_action.action_type == EMG_STOP ) {
+    if (robot_action.action_type == EMG_STOP ) {
       // If robot already should stop, do nothing
       break;
     }
@@ -462,15 +461,6 @@ bool CollisionMonitor::processStopSlowdown(
       robot_action.req_vel.y = 0.0;
       robot_action.req_vel.tw = 0.0;
       return true;
-//    }
-//    //TODO: if no other changes needed there is no use for a separate case for emergency stop here
-//    else if (polygon->getActionType() == EMG_STOP) {
-//      // Setting up zero velocity for EMG_STOP model
-//      robot_action.action_type = EMG_STOP;
-//      robot_action.req_vel.x = 0.0;
-//      robot_action.req_vel.y = 0.0;
-//      robot_action.req_vel.tw = 0.0;
-//      return true;
     } else {  // SLOWDOWN
       const Velocity safe_vel = velocity * polygon->getSlowdownRatio();
       // Check that currently calculated velocity is safer than
