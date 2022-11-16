@@ -85,9 +85,11 @@ CollisionMonitor::on_activate(const rclcpp_lifecycle::State & /*state*/)
   cmd_vel_out_pub_->on_activate();
   emg_stop_pub_->on_activate();
 
-  // Activating all polygons per default
+  // Activating all polygons that should be enabled by default
   for (std::shared_ptr<Polygon> polygon : polygons_) {
-    polygon->activate();
+    if (polygon->isDefaultEnabled()){
+      polygon->activate();
+    }
   }
 
   // Since polygons are being published when cmd_vel_in appears,

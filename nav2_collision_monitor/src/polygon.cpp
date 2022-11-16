@@ -129,6 +129,12 @@ bool Polygon::isEnabled() const
   return enable_;
 }
 
+bool Polygon::isDefaultEnabled() const
+{
+  return default_enabled_;
+}
+
+
 double Polygon::getTimeBeforeCollision() const
 {
   return time_before_collision_;
@@ -258,6 +264,10 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
     nav2_util::declare_parameter_if_not_declared(
       node, polygon_name_ + ".max_points", rclcpp::ParameterValue(3));
     max_points_ = node->get_parameter(polygon_name_ + ".max_points").as_int();
+
+    nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".default_enabled", rclcpp::ParameterValue(false));
+    default_enabled_ = node->get_parameter(polygon_name_ + ".default_enabled").as_bool();
 
     if (action_type_ == SLOWDOWN) {
       nav2_util::declare_parameter_if_not_declared(

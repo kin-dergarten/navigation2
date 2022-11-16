@@ -98,10 +98,15 @@ public:
    */
   double getSlowdownRatio() const;
   /**
-   * @brief Obtains checks are enabled for this polygon.
+   * @brief Obtains if checks are enabled for this polygon.
    * @return true if enabled
    */
   bool isEnabled() const;
+  /**
+   * @brief Obtains if checks should be enabled by default for this polygon.
+   * @return true if enabled
+   */
+  bool isDefaultEnabled() const;
   /**
    * @brief Obtains required time before collision for current polygon.
    * Applicable for APPROACH model.
@@ -198,8 +203,10 @@ protected:
   double time_before_collision_;
   /// @brief Time step for robot movement simulation
   double simulation_time_step_;
-  /// @brief Weather to enable this polygon check
+  /// @brief Weather to enable this polygon check (current value)
   bool enable_;
+  /// @brief Weather to enable this polygon check by default
+  bool default_enabled_;
   /// @brief Footprint subscriber
   std::unique_ptr<nav2_costmap_2d::FootprintSubscriber> footprint_sub_;
 
