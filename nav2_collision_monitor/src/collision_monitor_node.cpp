@@ -170,7 +170,7 @@ void CollisionMonitor::changeFieldStateCallback(const std::shared_ptr<rmw_reques
   RCLCPP_INFO(get_logger(), "Got request to change field state of field %s", field_name.c_str());
 
   for (std::shared_ptr<Polygon> polygon : polygons_) {
-    auto has_requested_field_name = polygon->getName().compare(field_name) != 0;
+    auto has_requested_field_name = polygon->getName().compare(field_name) == 0;
     if (has_requested_field_name)
     {
       auto needs_to_be_enabled = !polygon->isEnabled() && request->enable;
