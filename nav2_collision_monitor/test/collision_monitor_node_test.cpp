@@ -132,6 +132,7 @@ public:
 
   // Configuring
   void setCommonParameters();
+  void activateTestPublishers();
   void addPolygon(
     const std::string & polygon_name, const PolygonType type,
     const double size, const std::string & at);
@@ -257,6 +258,15 @@ void Tester::setCommonParameters()
     "stop_pub_timeout", rclcpp::ParameterValue(STOP_PUB_TIMEOUT));
   cm_->set_parameter(
     rclcpp::Parameter("stop_pub_timeout", STOP_PUB_TIMEOUT));
+}
+
+void Tester::activateTestPublishers()
+{
+  std::dynamic_pointer_cast<rclcpp_lifecycle::ManagedEntityInterface>(footprint_pub_)->on_activate();
+  std::dynamic_pointer_cast<rclcpp_lifecycle::ManagedEntityInterface>(scan_pub_)->on_activate();
+  std::dynamic_pointer_cast<rclcpp_lifecycle::ManagedEntityInterface>(pointcloud_pub_)->on_activate();
+  std::dynamic_pointer_cast<rclcpp_lifecycle::ManagedEntityInterface>(range_pub_)->on_activate();
+  std::dynamic_pointer_cast<rclcpp_lifecycle::ManagedEntityInterface>(cmd_vel_in_pub_)->on_activate();
 }
 
 void Tester::addPolygon(
@@ -592,6 +602,7 @@ TEST_F(Tester, testProcessStopSlowdown)
   // Set Collision Monitor parameters.
   // Making two polygons: outer polygon for slowdown and inner for robot stop.
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("SlowDown", POLYGON, 2.0, "slowdown");
   addPolygon("Stop", POLYGON, 1.0, "stop");
   addSource(SCAN_NAME, SCAN);
@@ -650,6 +661,7 @@ TEST_F(Tester, testProcessApproach)
   // Set Collision Monitor parameters.
   // Making one circle footprint for approach.
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("Approach", CIRCLE, 1.0, "approach");
   addSource(SCAN_NAME, SCAN);
   setVectors({"Approach"}, {SCAN_NAME});
@@ -713,6 +725,7 @@ TEST_F(Tester, testProcessApproachRotation)
   // Set Collision Monitor parameters.
   // Making one circle footprint for approach.
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("Approach", POLYGON, 1.0, "approach");
   addSource(RANGE_NAME, RANGE);
   setVectors({"Approach"}, {RANGE_NAME});
@@ -779,6 +792,7 @@ TEST_F(Tester, testCrossOver)
   // Making two polygons: outer polygon for slowdown and inner circle
   // as robot footprint for approach.
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("SlowDown", POLYGON, 2.0, "slowdown");
   addPolygon("Approach", CIRCLE, 1.0, "approach");
   addSource(POINTCLOUD_NAME, POINTCLOUD);
@@ -835,6 +849,7 @@ TEST_F(Tester, testCeasePublishZeroVel)
 
   // Configure stop and approach zones, and basic data source
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("Stop", POLYGON, 1.0, "stop");
   addPolygon("Approach", CIRCLE, 2.0, "approach");
   addSource(SCAN_NAME, SCAN);
@@ -994,6 +1009,7 @@ TEST_F(Tester, testProcessNonActive)
   rclcpp::Time curr_time = cm_->now();
 
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("Stop", POLYGON, 1.0, "stop");
   addSource(SCAN_NAME, SCAN);
   setVectors({"Stop"}, {SCAN_NAME});
@@ -1016,6 +1032,7 @@ TEST_F(Tester, testProcessNonActive)
 TEST_F(Tester, testIncorrectPolygonType)
 {
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("UnknownShape", POLYGON_UNKNOWN, 1.0, "stop");
   addSource(SCAN_NAME, SCAN);
   setVectors({"UnknownShape"}, {SCAN_NAME});
@@ -1027,6 +1044,7 @@ TEST_F(Tester, testIncorrectPolygonType)
 TEST_F(Tester, testIncorrectSourceType)
 {
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("Stop", POLYGON, 1.0, "stop");
   addSource("UnknownSource", SOURCE_UNKNOWN);
   setVectors({"Stop"}, {"UnknownSource"});
@@ -1038,6 +1056,7 @@ TEST_F(Tester, testIncorrectSourceType)
 TEST_F(Tester, testPolygonsNotSet)
 {
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("Stop", POLYGON, 1.0, "stop");
   addSource(SCAN_NAME, SCAN);
 
@@ -1048,6 +1067,7 @@ TEST_F(Tester, testPolygonsNotSet)
 TEST_F(Tester, testSourcesNotSet)
 {
   setCommonParameters();
+  activateTestPublishers();
   addPolygon("Stop", POLYGON, 1.0, "stop");
   addSource(SCAN_NAME, SCAN);
   cm_->declare_parameter("polygons", rclcpp::ParameterValue("Stop"));
