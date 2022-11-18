@@ -29,6 +29,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/EdgeCost.msg"
   "msg/LocalizationMetrics.msg"
   "msg/NavigationResult.msg"
+  "msg/MissedWaypoint.msg"
   "srv/GetCostmap.srv"
   "srv/IsPathValid.srv"
   "srv/ClearCostmapExceptRegion.srv"

@@ -21,6 +21,7 @@
 #include <set>
 #include <exception>
 #include <vector>
+#include <limits>
 
 #include "nav2_msgs/action/navigate_to_pose.hpp"
 #include "nav2_behavior_tree/bt_action_server.hpp"
@@ -65,6 +66,24 @@ BtActionServer<ActionT>::BtActionServer(
   }
   if (!node->has_parameter("wait_for_service_timeout")) {
     node->declare_parameter("wait_for_service_timeout", 1000);
+  }
+
+  std::vector<std::string> error_code_names = {
+    "follow_path_error_code",
+    "compute_path_error_code"
+  };
+
+  if (!node->has_parameter("error_code_names")) {
+    std::string error_codes_str;
+    for (const auto & error_code : error_code_names) {
+      error_codes_str += error_code + "\n";
+    }
+    RCLCPP_WARN_STREAM(
+      logger_, "Error_code parameters were not set. Using default values of: "
+        << error_codes_str
+        << "Make sure these match your BT and there are not other sources of error codes you want "
+        "reported to your application");
+    node->declare_parameter("error_code_names", error_code_names);
   }
 }
 
@@ -122,6 +141,9 @@ bool BtActionServer<ActionT>::on_configure()
   node->get_parameter("wait_for_service_timeout", wait_for_service_timeout);
   wait_for_service_timeout_ = std::chrono::milliseconds(wait_for_service_timeout);
   node->get_parameter("always_reload_bt_xml", always_reload_bt_xml_);
+
+  // Get error code id names to grab off of the blackboard
+  error_code_names_ = node->get_parameter("error_code_names").as_string_array();
 
   // Create the class that registers our custom nodes and executes the BT
   bt_ = std::make_unique<nav2_behavior_tree::BehaviorTreeEngine>(plugin_lib_names_);
@@ -256,6 +278,9 @@ void BtActionServer<ActionT>::executeCallback()
   // Give server an opportunity to populate the result message or simple give
   // an indication that the action is complete.
   auto result = std::make_shared<typename ActionT::Result>();
+
+  populateErrorCode(result);
+
   on_completion_callback_(result, rc);
 
   switch (rc) {
@@ -273,6 +298,30 @@ void BtActionServer<ActionT>::executeCallback()
       action_server_->terminate_all(result);
       RCLCPP_INFO(logger_, "Goal canceled");
       break;
+  }
+}
+
+template<class ActionT>
+void BtActionServer<ActionT>::populateErrorCode(
+  typename std::shared_ptr<typename ActionT::Result> result)
+{
+  int highest_priority_error_code = std::numeric_limits<int>::max();
+  for (const auto & error_code : error_code_names_) {
+    try {
+      int current_error_code = blackboard_->get<int>(error_code);
+      if (current_error_code != 0 && current_error_code < highest_priority_error_code) {
+        highest_priority_error_code = current_error_code;
+      }
+    } catch (...) {
+      RCLCPP_ERROR(
+        logger_,
+        "Failed to get error code: %s from blackboard",
+        error_code.c_str());
+    }
+  }
+
+  if (highest_priority_error_code != std::numeric_limits<int>::max()) {
+    result->error_code = highest_priority_error_code;
   }
 }
 
