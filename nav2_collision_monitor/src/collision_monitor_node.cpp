@@ -178,15 +178,19 @@ void CollisionMonitor::changeFieldStateCallback(const std::shared_ptr<rmw_reques
       auto needs_to_be_enabled = !polygon->isEnabled() && request->enable;
       auto needs_to_be_disabled = polygon->isEnabled() && !request->enable;
       if (needs_to_be_enabled) {
-        polygon->activate();
         RCLCPP_INFO( get_logger(), "Activating field %s", polygon->getName().c_str());
+        polygon->activate();
       }
       else if (needs_to_be_disabled) {
-        polygon->deactivate();
         RCLCPP_INFO( get_logger(), "Deactivating field %s", polygon->getName().c_str());
+        polygon->deactivate();
       }
       response->result = true;
       response->result_string="OK";
+
+      // run process without publishing velocity to ensure emergency stop topic is updated with active fields
+      Velocity velocity = {0.0,0.0,0.0};
+      process(velocity, false);
       return;
     }
   }
@@ -375,7 +379,7 @@ bool CollisionMonitor::configureSources(
   return true;
 }
 
-void CollisionMonitor::process(const Velocity & cmd_vel_in)
+void CollisionMonitor::process(const Velocity & cmd_vel_in, bool publish_velocity)
 {
   // Current timestamp for all inner routines prolongation
   rclcpp::Time curr_time = this->now();
@@ -439,7 +443,9 @@ void CollisionMonitor::process(const Velocity & cmd_vel_in)
   emg_stop_pub_->publish(emg_stop_msg);
 
   // Publish requred robot velocity
-  publishVelocity(robot_action);
+  if (publish_velocity){
+    publishVelocity(robot_action);
+  }
 
   // Publish polygons for better visualization
   publishPolygons();

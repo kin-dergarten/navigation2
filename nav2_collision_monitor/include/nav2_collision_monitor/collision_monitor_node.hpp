@@ -150,7 +150,7 @@ protected:
    * @brief Main processing routine
    * @param cmd_vel_in Input desired robot velocity
    */
-  void process(const Velocity & cmd_vel_in);
+  void process(const Velocity & cmd_vel_in, bool publish_velocity=true);
 
   /**
    * @brief Processes the polygon of STOP and SLOWDOWN action type
