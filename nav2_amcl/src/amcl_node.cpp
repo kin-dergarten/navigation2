@@ -287,6 +287,7 @@ AmclNode::on_activate(const rclcpp_lifecycle::State & /*state*/)
 
   // Lifecycle publishers must be explicitly activated
   pose_pub_->on_activate();
+  metrics_pub_->on_activate();
   particle_cloud_pub_->on_activate();
 
   first_pose_sent_ = false;
@@ -325,6 +326,7 @@ AmclNode::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
 
   // Lifecycle publishers must be explicitly deactivated
   pose_pub_->on_deactivate();
+  metrics_pub_->on_deactivate();
   particle_cloud_pub_->on_deactivate();
 
   // destroy bond connection
@@ -364,6 +366,7 @@ AmclNode::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
 
   // PubSub
   pose_pub_.reset();
+  metrics_pub_.reset();
   particle_cloud_pub_.reset();
 
   // Odometry
@@ -1036,7 +1039,13 @@ AmclNode::publishAmclPose(
     RCLCPP_DEBUG(get_logger(), "Publishing pose");
     last_published_pose_ = *p;
     first_pose_sent_ = true;
+
+    auto metrics = std::make_unique<nav2_msgs::msg::LocalizationMetrics>();
+    metrics->header = p->header;
+    metrics->max_weight = hyps[max_weight_hyp].weight;
+
     pose_pub_->publish(std::move(p));
+    metrics_pub_->publish(std::move(metrics));
   } else {
     RCLCPP_WARN(
       get_logger(), "AMCL covariance or pose is NaN, likely due to an invalid "
@@ -1360,6 +1369,10 @@ AmclNode::initPubSub()
 
   pose_pub_ = create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "amcl_pose",
+    rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+
+  metrics_pub_ = create_publisher<nav2_msgs::msg::LocalizationMetrics>(
+    "amcl_metrics",
     rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
 
   initial_pose_sub_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
