@@ -926,6 +926,7 @@ bool AmclNode::updateFilter(
       (i * angle_increment);
   }
   lasers_[laser_index]->sensorUpdate(pf_, reinterpret_cast<nav2_amcl::LaserData *>(&ldata));
+  tolal_sensor_model_score_ = lasers_[laser_index]->getSensorModelScore(pf_, reinterpret_cast<nav2_amcl::LaserData *>(&ldata));
   lasers_update_[laser_index] = false;
   pf_odom_pose_ = pose;
   return true;
@@ -1043,6 +1044,8 @@ AmclNode::publishAmclPose(
     auto metrics = std::make_unique<nav2_msgs::msg::LocalizationMetrics>();
     metrics->header = p->header;
     metrics->max_weight = hyps[max_weight_hyp].weight;
+    metrics->total_sensor_model_score = tolal_sensor_model_score_;
+    metrics->number_of_particles = set->sample_count;
 
     pose_pub_->publish(std::move(p));
     metrics_pub_->publish(std::move(metrics));

@@ -271,6 +271,7 @@ protected:
   pf_t * pf_{nullptr};
   bool pf_init_;
   pf_vector_t pf_odom_pose_;
+  double tolal_sensor_model_score_;
   int resample_count_{0};
 
   // Laser scan related
