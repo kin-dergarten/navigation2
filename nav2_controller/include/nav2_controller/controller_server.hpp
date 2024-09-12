@@ -255,6 +255,8 @@ protected:
 
   double failure_tolerance_;
   bool publish_zero_velocity_;
+  bool use_realtime_priority_;
+  rclcpp::Duration costmap_update_timeout_;
 
   // Whether we've published the single controller warning yet
   geometry_msgs::msg::PoseStamped end_pose_;

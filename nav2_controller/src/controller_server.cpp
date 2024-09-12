@@ -45,7 +45,8 @@ ControllerServer::ControllerServer(const rclcpp::NodeOptions & options)
   default_goal_checker_types_{"nav2_controller::SimpleGoalChecker"},
   lp_loader_("nav2_core", "nav2_core::Controller"),
   default_ids_{"FollowPath"},
-  default_types_{"dwb_core::DWBLocalPlanner"}
+  default_types_{"dwb_core::DWBLocalPlanner"},
+  costmap_update_timeout_(300ms)
 {
   RCLCPP_INFO(get_logger(), "Creating controller server");
 
@@ -62,6 +63,8 @@ ControllerServer::ControllerServer(const rclcpp::NodeOptions & options)
 
   declare_parameter("failure_tolerance", rclcpp::ParameterValue(0.0));
   declare_parameter("publish_zero_velocity", rclcpp::ParameterValue(true));
+  declare_parameter("use_realtime_priority", rclcpp::ParameterValue(false));
+  declare_parameter("costmap_update_timeout", 0.30);  // 300ms
 
   // The costmap node is used in the implementation of the controller
   costmap_ros_ = std::make_shared<nav2_costmap_2d::Costmap2DROS>(
@@ -197,6 +200,10 @@ ControllerServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
   odom_sub_ = std::make_unique<nav_2d_utils::OdomSubscriber>(node);
   vel_publisher_ = create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 1);
+
+  double costmap_update_timeout_dbl;
+  get_parameter("costmap_update_timeout", costmap_update_timeout_dbl);
+  costmap_update_timeout_ = rclcpp::Duration::from_seconds(costmap_update_timeout_dbl);
 
   // Create the action server that we implement with our followPath method
   action_server_ = std::make_unique<ActionServer>(
@@ -398,7 +405,11 @@ void ControllerServer::computeControl()
 
       // Don't compute a trajectory until costmap is valid (after clear costmap)
       rclcpp::Rate r(100);
+      auto waiting_start = now();
       while (!costmap_ros_->isCurrent()) {
+        if (now() - waiting_start > costmap_update_timeout_) {
+          throw nav2_core::ControllerTimedOut("Costmap timed out waiting for update");
+        }
         r.sleep();
       }
 
@@ -450,6 +461,13 @@ void ControllerServer::computeControl()
     publishZeroVelocity();
     std::shared_ptr<Action::Result> result = std::make_shared<Action::Result>();
     result->error_code = Action::Goal::INVALID_PATH;
+    action_server_->terminate_current(result);
+    return;
+  } catch (nav2_core::ControllerTimedOut & e) {
+    RCLCPP_ERROR(this->get_logger(), "%s", e.what());
+    publishZeroVelocity();
+    std::shared_ptr<Action::Result> result = std::make_shared<Action::Result>();
+    result->error_code = Action::Result::CONTROLLER_TIMED_OUT;
     action_server_->terminate_current(result);
     return;
   } catch (nav2_core::ControllerException & e) {
