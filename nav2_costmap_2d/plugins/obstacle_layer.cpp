@@ -532,6 +532,7 @@ ObstacleLayer::updateCosts(
   // set was_reset to false again
   if (!current_ && was_reset_) {
     was_reset_ = false;
+    // @kin-changes (costmap-clearance-issue): don't force current_ to be true here
   }
 
   if (footprint_clearing_enabled_) {
@@ -746,6 +747,9 @@ ObstacleLayer::reset()
   resetMaps();
   current_ = false;
   was_reset_ = true;
+
+  // @kin-changes (costmap-clearance-issue): Reseting the _last_updated of the individual observation buffers
+  //  (resetBuffersLastUpdated) was removed, since the buffers are not reset in this process either.
 }
 
 void
