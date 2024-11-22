@@ -487,7 +487,7 @@ Costmap2DROS::mapUpdateLoop(double frequency)
 
         auto current_time = now();
         auto map_current = isCurrent();
-        if (map_current &&  // only update costmap if it's current
+        if (map_current &&  // @kin-changes (costmap-clearance-issue): only update costmap if it's current
           ((last_publish_ + publish_cycle_ < current_time) ||  // publish_cycle_ is due
           (current_time < last_publish_)))     // time has moved backwards, probably due to a switch to sim_time // NOLINT
         {
