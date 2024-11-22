@@ -58,6 +58,7 @@ public:
 
   /**
    * @brief Get the timestamp of the last costmap update
+     @kin-changes (costmap-clearance-issue): added this function
    */
   rclcpp::Time getTimestampLastCostmapUpdate();
 
