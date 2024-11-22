@@ -52,9 +52,14 @@ public:
   ~CostmapSubscriber() {}
 
   /**
-   * @brief A Get the costmap from topic
+   * @brief Get the costmap from topic
    */
   std::shared_ptr<Costmap2D> getCostmap();
+
+  /**
+   * @brief Get the timestamp of the last costmap update
+   */
+  rclcpp::Time getTimestampLastCostmapUpdate();
 
   /**
    * @brief Convert an occ grid message into a costmap object
