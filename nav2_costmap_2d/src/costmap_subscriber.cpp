@@ -53,6 +53,15 @@ std::shared_ptr<Costmap2D> CostmapSubscriber::getCostmap()
   return costmap_;
 }
 
+rclcpp::Time CostmapSubscriber::getTimestampLastCostmapUpdate()
+{
+  if (!costmap_received_) {
+    throw std::runtime_error("Costmap is not available");
+  }
+
+  return std::atomic_load(&costmap_msg_)->header.stamp;
+}
+
 void CostmapSubscriber::toCostmap2D()
 {
   auto current_costmap_msg = std::atomic_load(&costmap_msg_);
