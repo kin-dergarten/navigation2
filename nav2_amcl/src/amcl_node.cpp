@@ -280,7 +280,9 @@ AmclNode::on_activate(const rclcpp_lifecycle::State & /*state*/)
   // process incoming callbacks until we are
   active_ = true;
 
-  if (set_initial_pose_) {
+  if (init_pose_received_on_inactive) {
+    handleInitialPose(last_published_pose_);
+  } else if (set_initial_pose_) {
     auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
 
     msg->header.stamp = now();
@@ -291,8 +293,6 @@ AmclNode::on_activate(const rclcpp_lifecycle::State & /*state*/)
     msg->pose.pose.orientation = orientationAroundZAxis(initial_pose_yaw_);
 
     initialPoseReceived(msg);
-  } else if (init_pose_received_on_inactive) {
-    handleInitialPose(last_published_pose_);
   }
 
   auto node = shared_from_this();
