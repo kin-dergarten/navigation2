@@ -324,6 +324,25 @@ AmclNode::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
   // reset dynamic parameter handler
   dyn_params_handler_.reset();
 
+  if (set_initial_pose_) {
+    set_parameter(
+      rclcpp::Parameter(
+        "initial_pose.x",
+        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.x)));
+    set_parameter(
+      rclcpp::Parameter(
+        "initial_pose.y",
+        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.y)));
+    set_parameter(
+      rclcpp::Parameter(
+        "initial_pose.z",
+        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.z)));
+    set_parameter(
+      rclcpp::Parameter(
+        "initial_pose.yaw",
+        rclcpp::ParameterValue(tf2::getYaw(last_published_pose_.pose.pose.orientation))));
+  }
+
   // destroy bond connection
   destroyBond();
 
@@ -385,25 +404,6 @@ AmclNode::on_cleanup(const rclcpp_lifecycle::State & /*state*/)
   noise_only_update_ = false;
   recovery_run_count_ = 0;
   recovery_scan_count_ = 0;
-
-  if (set_initial_pose_) {
-    set_parameter(
-      rclcpp::Parameter(
-        "initial_pose.x",
-        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.x)));
-    set_parameter(
-      rclcpp::Parameter(
-        "initial_pose.y",
-        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.y)));
-    set_parameter(
-      rclcpp::Parameter(
-        "initial_pose.z",
-        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.z)));
-    set_parameter(
-      rclcpp::Parameter(
-        "initial_pose.yaw",
-        rclcpp::ParameterValue(tf2::getYaw(last_published_pose_.pose.pose.orientation))));
-  }
 
   return nav2_util::CallbackReturn::SUCCESS;
 }
