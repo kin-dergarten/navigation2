@@ -286,6 +286,11 @@ AmclNode::on_activate(const rclcpp_lifecycle::State & /*state*/)
   } else if (set_initial_pose_) {
     auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
 
+    get_parameter("initial_pose.x", initial_pose_x_);
+    get_parameter("initial_pose.y", initial_pose_y_);
+    get_parameter("initial_pose.z", initial_pose_z_);
+    get_parameter("initial_pose.yaw", initial_pose_yaw_);
+
     msg->header.stamp = now();
     msg->header.frame_id = global_frame_id_;
     msg->pose.pose.position.x = initial_pose_x_;
