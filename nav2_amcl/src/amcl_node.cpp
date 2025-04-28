@@ -280,8 +280,15 @@ AmclNode::on_activate(const rclcpp_lifecycle::State & /*state*/)
   // process incoming callbacks until we are
   active_ = true;
 
-  if (set_initial_pose_) {
+  if (init_pose_received_on_inactive) {
+    handleInitialPose(last_published_pose_);
+  } else if (set_initial_pose_) {
     auto msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
+
+    get_parameter("initial_pose.x", initial_pose_x_);
+    get_parameter("initial_pose.y", initial_pose_y_);
+    get_parameter("initial_pose.z", initial_pose_z_);
+    get_parameter("initial_pose.yaw", initial_pose_yaw_);
 
     msg->header.stamp = now();
     msg->header.frame_id = global_frame_id_;
@@ -291,8 +298,6 @@ AmclNode::on_activate(const rclcpp_lifecycle::State & /*state*/)
     msg->pose.pose.orientation = orientationAroundZAxis(initial_pose_yaw_);
 
     initialPoseReceived(msg);
-  } else if (init_pose_received_on_inactive) {
-    handleInitialPose(last_published_pose_);
   }
 
   auto node = shared_from_this();
@@ -322,6 +327,25 @@ AmclNode::on_deactivate(const rclcpp_lifecycle::State & /*state*/)
 
   // reset dynamic parameter handler
   dyn_params_handler_.reset();
+
+  if (set_initial_pose_) {
+    set_parameter(
+      rclcpp::Parameter(
+        "initial_pose.x",
+        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.x)));
+    set_parameter(
+      rclcpp::Parameter(
+        "initial_pose.y",
+        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.y)));
+    set_parameter(
+      rclcpp::Parameter(
+        "initial_pose.z",
+        rclcpp::ParameterValue(last_published_pose_.pose.pose.position.z)));
+    set_parameter(
+      rclcpp::Parameter(
+        "initial_pose.yaw",
+        rclcpp::ParameterValue(tf2::getYaw(last_published_pose_.pose.pose.orientation))));
+  }
 
   // destroy bond connection
   destroyBond();
