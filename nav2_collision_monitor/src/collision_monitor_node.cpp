@@ -184,7 +184,7 @@ void CollisionMonitor::changeFieldStateCallback(const std::shared_ptr<rmw_reques
                                                 std::shared_ptr<nav2_collision_monitor::srv::ChangeFieldState::Response> response)
 {
   std::string field_name = request->field_name;
-  RCLCPP_INFO(get_logger(), "Got request to change field state of field %s", field_name.c_str());
+  RCLCPP_INFO(get_logger(), "Got request to %s field state of field %s", request->enable ? "ENABLE" : "DISABLE", field_name.c_str());
 
   for (std::shared_ptr<Polygon> polygon : polygons_) {
     auto has_requested_field_name = polygon->getName().compare(field_name) == 0;
