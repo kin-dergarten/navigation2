@@ -357,11 +357,11 @@ StaticLayer::updateBounds(
 
   double wx, wy;
 
-  mapToWorld(x_, y_, wx, wy);
+  layered_costmap_->getCostmap()->mapToWorld(x_, y_, wx, wy);
   *min_x = std::min(wx, *min_x);
   *min_y = std::min(wy, *min_y);
 
-  mapToWorld(x_ + width_, y_ + height_, wx, wy);
+  layered_costmap_->getCostmap()->mapToWorld(x_ + width_, y_ + height_, wx, wy);
   *max_x = std::max(wx, *max_x);
   *max_y = std::max(wy, *max_y);
 
