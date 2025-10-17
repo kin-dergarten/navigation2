@@ -15,7 +15,7 @@
 #include "nav2_util/geometry_utils.hpp"
 #include "nav2_graceful_controller/graceful_controller.hpp"
 #include "nav2_costmap_2d/costmap_filters/filter_values.hpp"
-#include "nav2_core/exceptions.hpp"
+#include "nav2_core/planner_exceptions.hpp"
 
 namespace nav2_graceful_controller
 {

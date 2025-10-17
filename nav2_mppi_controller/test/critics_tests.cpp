@@ -31,7 +31,7 @@
 #include "nav2_mppi_controller/critics/prefer_forward_critic.hpp"
 #include "nav2_mppi_controller/critics/twirling_critic.hpp"
 #include "nav2_mppi_controller/critics/velocity_deadband_critic.hpp"
-#include "nav2_core/exceptions.hpp"
+#include "nav2_core/planner_exceptions.hpp"
 #include "utils_test.cpp"  // NOLINT
 
 // Tests the various critic plugin functions

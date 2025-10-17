@@ -15,7 +15,7 @@
 
 #include <cmath>
 #include "nav2_mppi_controller/critics/cost_critic.hpp"
-#include "nav2_core/exceptions.hpp"
+#include "nav2_core/planner_exceptions.hpp"
 
 namespace mppi::critics
 {

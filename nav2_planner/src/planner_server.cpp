@@ -164,7 +164,7 @@ PlannerServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
     std::bind(&PlannerServer::computePlan, this),
     nullptr,
     std::chrono::milliseconds(500),
-    true);
+    true, server_options);
 
   action_server_poses_ = std::make_unique<ActionServerThroughPoses>(
     shared_from_this(),
@@ -172,7 +172,7 @@ PlannerServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
     std::bind(&PlannerServer::computePlanThroughPoses, this),
     nullptr,
     std::chrono::milliseconds(500),
-    true);
+    true, server_options);
 
   return nav2_util::CallbackReturn::SUCCESS;
 }

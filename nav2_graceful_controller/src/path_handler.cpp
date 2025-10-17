@@ -23,7 +23,7 @@
 #include "nav2_util/geometry_utils.hpp"
 #include "nav_2d_utils/tf_help.hpp"
 #include "nav2_graceful_controller/path_handler.hpp"
-#include "nav2_core/exceptions.hpp"
+#include "nav2_core/planner_exceptions.hpp"
 
 namespace nav2_graceful_controller
 {
