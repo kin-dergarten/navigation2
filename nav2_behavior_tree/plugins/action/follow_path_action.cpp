@@ -43,12 +43,14 @@ BT::NodeStatus FollowPathAction::on_success()
 
 BT::NodeStatus FollowPathAction::on_aborted()
 {
+  RCLCPP_WARN(node_->get_logger(),"FollowPathAction: %d", result_.result->error_code);
   setOutput("error_code_id", result_.result->error_code);
   return BT::NodeStatus::FAILURE;
 }
 
 BT::NodeStatus FollowPathAction::on_cancelled()
 {
+  RCLCPP_WARN(node_->get_logger(),"FollowPathAction: %d", result_.result->error_code);
   // Set empty error code, action was cancelled
   setOutput("error_code_id", ActionResult::NONE);
   return BT::NodeStatus::SUCCESS;

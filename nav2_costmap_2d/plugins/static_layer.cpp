@@ -69,6 +69,7 @@ StaticLayer::~StaticLayer()
 void
 StaticLayer::onInitialize()
 {
+  RCLCPP_INFO(logger_, "Test updating nav stack to latest humble + error codes");
   global_frame_ = layered_costmap_->getGlobalFrameID();
 
   getParameters();
