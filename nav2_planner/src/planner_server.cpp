@@ -680,14 +680,19 @@ void PlannerServer::isPathValid(
             position.x, position.y, theta, footprint));
       }
 
+      // Fill invalid_pose_indices for obstacle bypass. This is missing in the upstream repo.
       if (use_radius &&
         (cost == nav2_costmap_2d::LETHAL_OBSTACLE ||
         cost == nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE))
       {
         response->is_valid = false;
+        response->invalid_pose_indices.push_back(i);
+        RCLCPP_INFO(get_logger(), "IsPathValid with radius: Path is invalid due to cost %u at index %u of %ld", cost, i, request->path.poses.size());
         break;
       } else if (cost == nav2_costmap_2d::LETHAL_OBSTACLE) {
         response->is_valid = false;
+        response->invalid_pose_indices.push_back(i);
+        RCLCPP_INFO(get_logger(), "IsPathValid with footprint: Path is invalid due to cost %u at index %u of %ld", cost, i, request->path.poses.size());
         break;
       }
     }
