@@ -685,9 +685,11 @@ void PlannerServer::isPathValid(
         cost == nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE))
       {
         response->is_valid = false;
+        response->invalid_pose_indices.push_back(i);
         break;
       } else if (cost == nav2_costmap_2d::LETHAL_OBSTACLE) {
         response->is_valid = false;
+        response->invalid_pose_indices.push_back(i);
         break;
       }
     }
