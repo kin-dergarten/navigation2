@@ -49,7 +49,7 @@ PlannerServer::PlannerServer(const rclcpp::NodeOptions & options)
   costmap_update_timeout_(1s),
   costmap_(nullptr)
 {
-  RCLCPP_INFO(get_logger(), "Creating");
+  RCLCPP_INFO(get_logger(), "Creating TEST Alex");
 
   // Declare this node's parameters
   declare_parameter("planner_plugins", default_ids_);
@@ -627,6 +627,7 @@ void PlannerServer::isPathValid(
   const std::shared_ptr<nav2_msgs::srv::IsPathValid::Request> request,
   std::shared_ptr<nav2_msgs::srv::IsPathValid::Response> response)
 {
+  RCLCPP_INFO(get_logger(), "IsPathValid start");
   response->is_valid = true;
 
   if (request->path.poses.empty()) {
