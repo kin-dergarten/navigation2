@@ -49,7 +49,7 @@ PlannerServer::PlannerServer(const rclcpp::NodeOptions & options)
   costmap_update_timeout_(1s),
   costmap_(nullptr)
 {
-  RCLCPP_INFO(get_logger(), "Creating TEST Alex");
+  RCLCPP_INFO(get_logger(), "Creating");
 
   // Declare this node's parameters
   declare_parameter("planner_plugins", default_ids_);
@@ -627,7 +627,6 @@ void PlannerServer::isPathValid(
   const std::shared_ptr<nav2_msgs::srv::IsPathValid::Request> request,
   std::shared_ptr<nav2_msgs::srv::IsPathValid::Response> response)
 {
-  RCLCPP_INFO(get_logger(), "IsPathValid start");
   response->is_valid = true;
 
   if (request->path.poses.empty()) {
@@ -681,19 +680,19 @@ void PlannerServer::isPathValid(
             position.x, position.y, theta, footprint));
       }
 
-      // Fill invalid_pose_indices for obstacle bypass
+      // Fill invalid_pose_indices for obstacle bypass. This is missing in the upstream repo.
       if (use_radius &&
         (cost == nav2_costmap_2d::LETHAL_OBSTACLE ||
         cost == nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE))
       {
         response->is_valid = false;
         response->invalid_pose_indices.push_back(i);
-        RCLCPP_INFO(get_logger(), "IsPathValid: Path is invalid due to cost %u at index %u of %ld", cost, i, request->path.poses.size());
+        RCLCPP_INFO(get_logger(), "IsPathValid with radius: Path is invalid due to cost %u at index %u of %ld", cost, i, request->path.poses.size());
         break;
       } else if (cost == nav2_costmap_2d::LETHAL_OBSTACLE) {
         response->is_valid = false;
         response->invalid_pose_indices.push_back(i);
-        RCLCPP_INFO(get_logger(), "IsPathValid: Path is invalid due to cost %u at index %u of %ld", cost, i, request->path.poses.size());
+        RCLCPP_INFO(get_logger(), "IsPathValid with footprint: Path is invalid due to cost %u at index %u of %ld", cost, i, request->path.poses.size());
         break;
       }
     }
