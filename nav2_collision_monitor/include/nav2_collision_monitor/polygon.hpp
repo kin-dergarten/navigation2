@@ -153,7 +153,13 @@ public:
   /**
    * @brief Publishes polygon message into a its own topic
    */
-  void publish() const;
+  void publish();
+
+  /**
+   * @brief Publishes an empty polygon message into a its own topic if previously published
+   * polygon was not empty (clear visualization)
+   */
+  void publishEmptyIfNeeded();
 
 protected:
   /**
@@ -216,6 +222,8 @@ protected:
   std::unique_ptr<nav2_costmap_2d::FootprintSubscriber> footprint_sub_;
   /// @brief Whether polygon is enabled
   bool enabled_;
+  /// @brief Whether to publish the polygon for visualization
+  bool published_on_topic_;
 
   // Global variables
   /// @brief TF buffer

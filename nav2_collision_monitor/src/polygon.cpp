@@ -220,7 +220,7 @@ double Polygon::getCollisionTime(
   return -1.0;
 }
 
-void Polygon::publish() const
+void Polygon::publish()
 {
   if (!visualize_ or !enable_) {
     return;
@@ -240,6 +240,33 @@ void Polygon::publish() const
 
   // Publish polygon
   polygon_pub_->publish(std::move(poly_s));
+  published_on_topic_ = true;
+}
+
+void Polygon::publishEmptyIfNeeded()
+{
+  if (!visualize_ ){
+    return;
+  }
+  if (published_on_topic_)
+  {
+
+    auto node = node_.lock();
+    if (!node) {
+      throw std::runtime_error{"Failed to lock node"};
+    }
+
+    // Fill PolygonStamped struct
+    std::unique_ptr<geometry_msgs::msg::PolygonStamped> poly_s =
+      std::make_unique<geometry_msgs::msg::PolygonStamped>();
+    poly_s->header.stamp = node->now();
+    poly_s->header.frame_id = base_frame_id_;
+
+    // Publish polygon
+    polygon_pub_->publish(std::move(poly_s));
+    published_on_topic_ = false;
+  }
+
 }
 
 bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
