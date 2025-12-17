@@ -580,10 +580,6 @@ void CollisionMonitor::publishPolygons() const
     if (polygon->getEnabled()) {
       polygon->publish();
     }
-    else
-    {
-      polygon->publishEmptyIfNeeded();
-    }
   }
 }
 
