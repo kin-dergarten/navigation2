@@ -102,6 +102,19 @@ void Polygon::deactivate()
 {
   enable_ = false;
   if (visualize_) {
+    auto node = node_.lock();
+    if (!node) {
+      throw std::runtime_error{"Failed to lock node"};
+    }
+
+    // Fill PolygonStamped struct
+    std::unique_ptr<geometry_msgs::msg::PolygonStamped> poly_s =
+      std::make_unique<geometry_msgs::msg::PolygonStamped>();
+    poly_s->header.stamp = node->now();
+    poly_s->header.frame_id = base_frame_id_;
+
+    // Publish polygon
+    polygon_pub_->publish(std::move(poly_s));
     polygon_pub_->on_deactivate();
   }
 }
