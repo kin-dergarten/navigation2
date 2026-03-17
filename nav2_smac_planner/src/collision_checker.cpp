@@ -101,8 +101,9 @@ bool GridCollisionChecker::inCollision(
   }
 
   // Assumes setFootprint already set
-  double wx, wy;
-  costmap_->mapToWorld(static_cast<double>(x), static_cast<double>(y), wx, wy);
+  auto pose = getWorldCoords(x, y, costmap_);
+  double wx = pose.position.x;
+  double wy = pose.position.y;
 
   if (!footprint_is_radius_) {
     // if footprint, then we check for the footprint's points, but first see

@@ -14,6 +14,7 @@
 #include <vector>
 #include "nav2_costmap_2d/footprint_collision_checker.hpp"
 #include "nav2_smac_planner/constants.hpp"
+#include "nav2_smac_planner/utils.hpp"
 #include "rclcpp_lifecycle/lifecycle_node.hpp"
 
 #ifndef NAV2_SMAC_PLANNER__COLLISION_CHECKER_HPP_
