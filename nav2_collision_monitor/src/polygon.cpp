@@ -222,6 +222,7 @@ double Polygon::getCollisionTime(
     // Transform collision_points to the frame concerned with current robot pose
     points_transformed = collision_points;
     transformPoints(pose, points_transformed);
+    filterPointsBasedOnDrivingDirection(points_transformed,velocity);
     // If the collision occurred on this stage, return the actual time before a collision
     // as if robot was moved with given velocity
     if (getPointsInside(points_transformed) > max_points_) {
@@ -232,6 +233,19 @@ double Polygon::getCollisionTime(
   // There is no collision
   return -1.0;
 }
+
+  void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const
+{
+  std::vector<Point> filtered_points;
+  for (const Point & point : points) {
+    auto inner_product = velocity.x * point.x + velocity.y * point.y;
+    if (inner_product > 0.0) {
+      filtered_points.push_back(point);
+    }
+  }
+  points = std::move(filtered_points);
+}
+
 
 void Polygon::publish() const
 {

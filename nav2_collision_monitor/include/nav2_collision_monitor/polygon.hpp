@@ -151,6 +151,13 @@ public:
     const Velocity & velocity) const;
 
   /**
+   * @brief Filter out points that are opposite to the driving direction
+   * @param points  Array of 2D obstacle points
+   * @param velocity Robot velocity
+   */
+  void  filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const;
+
+  /**
    * @brief Publishes polygon message into a its own topic
    */
   void publish() const;
