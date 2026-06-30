@@ -162,12 +162,17 @@ bool Spin::isCollisionFree(
   geometry_msgs::msg::Twist * cmd_vel,
   geometry_msgs::msg::Pose2D & pose2d)
 {
+  // Check if current position is free
+
+  if (!collision_checker_->isCollisionFree(pose2d, true)) {
+    return false;
+  }
+
   // Simulate ahead by simulate_ahead_time_ in cycle_frequency_ increments
   int cycle_count = 0;
   double sim_position_change;
   const int max_cycle_count = static_cast<int>(cycle_frequency_ * simulate_ahead_time_);
   geometry_msgs::msg::Pose2D init_pose = pose2d;
-  bool fetch_data = true;
 
   while (cycle_count < max_cycle_count) {
     sim_position_change = cmd_vel->angular.z * (cycle_count / cycle_frequency_);
@@ -178,10 +183,9 @@ bool Spin::isCollisionFree(
       break;
     }
 
-    if (!collision_checker_->isCollisionFree(pose2d, fetch_data)) {
+    if (!collision_checker_->isCollisionFree(pose2d, false)) {
       return false;
     }
-    fetch_data = false;
   }
   return true;
 }
