@@ -206,9 +206,12 @@ double Polygon::getCollisionTime(
   Pose pose = {0.0, 0.0, 0.0};
   Velocity vel = velocity;
 
+//Remove points that are not in driving direction
+std::vector<Point>collision_points_filtered;
+  filterPointsBasedOnDrivingDirection(collision_points_filtered, vel);
+
   // Array of points transformed to the frame concerned with pose on each simulation step
-  std::vector<Point> points_transformed = collision_points;
-  filterPointsBasedOnDrivingDirection(points_transformed,velocity);
+  std::vector<Point> points_transformed = collision_points_filtered;
   // Check static polygon
   if (getPointsInside(points_transformed) >= max_points_) {
     return 0.0;
@@ -220,7 +223,7 @@ double Polygon::getCollisionTime(
     // NOTE: vel is changing during the simulation
     projectState(simulation_time_step_, pose, vel);
     // Transform collision_points to the frame concerned with current robot pose
-    points_transformed = collision_points;
+    points_transformed = collision_points_filtered;
     transformPoints(pose, points_transformed);
     // If the collision occurred on this stage, return the actual time before a collision
     // as if robot was moved with given velocity
