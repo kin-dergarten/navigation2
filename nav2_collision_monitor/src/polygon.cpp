@@ -206,8 +206,8 @@ double Polygon::getCollisionTime(
   Pose pose = {0.0, 0.0, 0.0};
   Velocity vel = velocity;
 
-//Remove points that are not in driving direction
-std::vector<Point>collision_points_filtered;
+  //Remove points that are not in driving direction
+  std::vector<Point> collision_points_filtered = collision_points;
   filterPointsBasedOnDrivingDirection(collision_points_filtered, vel);
 
   // Array of points transformed to the frame concerned with pose on each simulation step
