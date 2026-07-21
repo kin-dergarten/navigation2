@@ -238,13 +238,44 @@ double Polygon::getCollisionTime(
 
   void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const
 {
+  constexpr double kLinearVelocityEps = 1e-6;
+  constexpr double kAngularVelocityEps = 1e-6;
+  constexpr double kPointEps = 1e-9;
+
   std::vector<Point> filtered_points;
-  for (const Point & point : points) {
-    auto inner_product = velocity.x * point.x + velocity.y * point.y;
-    if (inner_product > 0.0) {
-      filtered_points.push_back(point);
+  filtered_points.reserve(points.size());
+
+  const bool is_pure_rotation =
+    (std::fabs(velocity.x) <= kLinearVelocityEps) &&
+    (std::fabs(velocity.y) <= kLinearVelocityEps) &&
+    (std::fabs(velocity.tw) > kPointEps);
+
+  if (is_pure_rotation) {
+    // Quadrant-based turn filter:
+    // CCW (+tw): keep Quadrants I and III  -> x*y > 0 (top-right, bottom-left)
+    // CW  (-tw): keep Quadrants II and IV -> x*y < 0 (top-left, bottom-right)
+    for (const Point & point : points) {
+      const double quadrant_product = point.x * point.y;
+
+      if (velocity.tw > 0.0) {
+        if (quadrant_product > kPointEps) {
+          filtered_points.push_back(point);
+        }
+      } else {
+        if (quadrant_product < -kPointEps) {
+          filtered_points.push_back(point);
+        }
+      }
+    }
+  } else {
+    for (const Point & point : points) {
+      const double inner_product = velocity.x * point.x + velocity.y * point.y;
+      if (inner_product > 0.0) {
+        filtered_points.push_back(point);
+      }
     }
   }
+
   points = std::move(filtered_points);
 }
 
