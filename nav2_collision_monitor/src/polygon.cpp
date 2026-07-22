@@ -248,7 +248,7 @@ double Polygon::getCollisionTime(
   const bool is_pure_rotation =
     (std::fabs(velocity.x) <= kLinearVelocityEps) &&
     (std::fabs(velocity.y) <= kLinearVelocityEps) &&
-    (std::fabs(velocity.tw) > kPointEps);
+    (std::fabs(velocity.tw) > kAngularVelocityEps);
 
   if (is_pure_rotation) {
     // Quadrant-based turn filter:
@@ -257,14 +257,9 @@ double Polygon::getCollisionTime(
     for (const Point & point : points) {
       const double quadrant_product = point.x * point.y;
 
-      if (velocity.tw > 0.0) {
-        if (quadrant_product > kPointEps) {
-          filtered_points.push_back(point);
-        }
-      } else {
-        if (quadrant_product < -kPointEps) {
-          filtered_points.push_back(point);
-        }
+      if ((velocity.tw > 0.0 && quadrant_product > kPointEps) ||
+          (velocity.tw <= 0.0 && quadrant_product < -kPointEps)) {
+        filtered_points.push_back(point);
       }
     }
   } else {
