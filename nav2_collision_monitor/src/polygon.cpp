@@ -236,7 +236,7 @@ double Polygon::getCollisionTime(
   return -1.0;
 }
 
-  void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const
+void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const
 {
   constexpr double kLinearVelocityEps = 1e-6;
   constexpr double kAngularVelocityEps = 1e-6;
@@ -451,6 +451,11 @@ Polygon::dynamicParametersCallback(
     if (param_type == rcl_interfaces::msg::ParameterType::PARAMETER_BOOL) {
       if (param_name == polygon_name_ + "." + "enabled") {
         enabled_ = parameter.as_bool();
+      }
+    }
+    if (action_type_ == APPROACH && param_type == rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE) {
+      if (param_name == polygon_name_ + "." + "time_before_collision") {
+        time_before_collision_ = parameter.as_double();
       }
     }
   }
