@@ -151,7 +151,7 @@ public:
     const Velocity & velocity) const;
 
   /**
-   * @brief Filter out points that are opposite to the driving direction
+   * @brief Filter out points that are opposite to the driving direction and not in rotating direction
    * @param points  Array of 2D obstacle points
    * @param velocity Robot velocity
    */
