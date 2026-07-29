@@ -113,6 +113,11 @@ public:
    */
   bool isDefaultEnabled() const;
   /**
+   * @brief Obtains if the collsion points need to be filtered based on driving direction
+   * @return true if enabled
+   */
+  bool isFilterPointsByDriveDirectionEnabled() const;
+  /**
    * @brief Obtains required time before collision for current polygon.
    * Applicable for APPROACH model.
    * @return Time before collision in seconds
@@ -223,6 +228,8 @@ protected:
   std::unique_ptr<nav2_costmap_2d::FootprintSubscriber> footprint_sub_;
   /// @brief Whether polygon is enabled
   bool enabled_;
+  /// @brief Whether the collision points need to be filtered based on driivng direction
+  bool filter_points_by_drive_direction_;
 
   // Global variables
   /// @brief TF buffer

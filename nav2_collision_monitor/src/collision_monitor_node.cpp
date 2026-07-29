@@ -524,9 +524,11 @@ bool CollisionMonitor::processApproach(
 {
   polygon->updatePolygon();
 
-  // filtering points based on driving direction and rotation
   std::vector<Point> collision_points_filtered = collision_points;
-  polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, velocity);
+  // filtering points based on driving direction and rotation
+  if (polygon->isFilterPointsByDriveDirectionEnabled()) {
+    polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, velocity);
+  }
   
   // check if the static polygon already in collision
   if (polygon->getPointsInside(collision_points_filtered) >= polygon->getMaxPoints()) {

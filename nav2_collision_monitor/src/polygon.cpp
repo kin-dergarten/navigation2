@@ -154,6 +154,10 @@ bool Polygon::isDefaultEnabled() const
   return default_enabled_;
 }
 
+bool Polygon::isFilterPointsByDriveDirectionEnabled() const
+{
+  return filter_points_by_drive_direction_;
+}
 
 double Polygon::getTimeBeforeCollision() const
 {
@@ -343,6 +347,10 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
         node, polygon_name_ + ".simulation_time_step", rclcpp::ParameterValue(0.1));
       simulation_time_step_ =
         node->get_parameter(polygon_name_ + ".simulation_time_step").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".filter_points_by_drive_direction", rclcpp::ParameterValue(true));
+      filter_points_by_drive_direction_ = 
+        node->get_parameter(polygon_name_ + ".filter_points_by_drive_direction").as_bool();
     }
 
     nav2_util::declare_parameter_if_not_declared(

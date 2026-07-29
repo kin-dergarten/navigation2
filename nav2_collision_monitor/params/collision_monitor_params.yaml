@@ -41,6 +41,7 @@ collision_monitor:
       max_points: 5
       visualize: False
       enabled: True
+      filter_points_by_drive_direction: True
     observation_sources: ["scan"]
     scan:
       type: "scan"
