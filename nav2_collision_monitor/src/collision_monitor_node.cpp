@@ -531,7 +531,7 @@ bool CollisionMonitor::processApproach(
   }
   
   // check if the static polygon already in collision
-  if (polygon->getPointsInside(collision_points_filtered) >= polygon->getMaxPoints()) {
+  if (polygon->getPointsInside(collision_points_filtered) > polygon->getMaxPoints()) {
     robot_action.action_type = EMG_STOP;
     robot_action.req_vel.x = 0.0;
     robot_action.req_vel.y = 0.0;
