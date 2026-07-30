@@ -542,6 +542,14 @@ bool CollisionMonitor::processApproach(
   // Obtain time before a collision
   const double collision_time = polygon->getCollisionTime(collision_points_filtered, velocity);
   if (collision_time >= 0.0) {
+    constexpr double kTimeEps = 1e-4;
+    if (collision_time < kTimeEps) {
+      robot_action.action_type = EMG_STOP;
+      robot_action.req_vel.x = 0.0;
+      robot_action.req_vel.y = 0.0;
+      robot_action.req_vel.tw = 0.0;
+      return true;
+    }
     // If collision will occurr, reduce robot speed
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
     const Velocity safe_vel = velocity * change_ratio;
