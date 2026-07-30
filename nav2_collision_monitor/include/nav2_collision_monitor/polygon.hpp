@@ -103,6 +103,12 @@ public:
    */
   double getSlowdownRatio() const;
   /**
+   * @brief Obtains minimum velocity robot can have during approach action
+   * Applicable for APPROACH model.
+   * @return robot min velocity
+   */
+  double getRobotMinVelocity() const;
+  /**
    * @brief Obtains if checks are enabled for this polygon.
    * @return true if enabled
    */
@@ -230,6 +236,10 @@ protected:
   bool enabled_;
   /// @brief Whether the collision points need to be filtered based on driivng direction
   bool filter_points_by_drive_direction_;
+  /// @brief minimum velocity robot can have
+  double robot_min_vel_x_;
+  double robot_min_vel_y_;
+  double robot_min_vel_tw_;
 
   // Global variables
   /// @brief TF buffer

@@ -164,6 +164,11 @@ double Polygon::getTimeBeforeCollision() const
   return time_before_collision_;
 }
 
+Velocity Polygon::getRobotMinVelocity() const
+{
+  return {robot_min_vel_x_, robot_min_vel_y_, robot_min_vel_tw_};
+}
+
 void Polygon::getPolygon(std::vector<Point> & poly) const
 {
   poly = poly_;
@@ -343,6 +348,18 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
         node, polygon_name_ + ".time_before_collision", rclcpp::ParameterValue(2.0));
       time_before_collision_ =
         node->get_parameter(polygon_name_ + ".time_before_collision").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".min_vel_x", rclcpp::ParameterValue(0.0001));
+      robot_min_vel_x_ =
+        node->get_parameter(polygon_name_ + ".min_vel_x").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".min_vel_y", rclcpp::ParameterValue(0.0001));
+      robot_min_vel_y_ =
+        node->get_parameter(polygon_name_ + ".min_vel_y").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".min_vel_tw", rclcpp::ParameterValue(0.0001));
+      robot_min_vel_tw_ =
+        node->get_parameter(polygon_name_ + ".min_vel_tw").as_double();
       nav2_util::declare_parameter_if_not_declared(
         node, polygon_name_ + ".simulation_time_step", rclcpp::ParameterValue(0.1));
       simulation_time_step_ =
