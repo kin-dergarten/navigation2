@@ -349,15 +349,15 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
       time_before_collision_ =
         node->get_parameter(polygon_name_ + ".time_before_collision").as_double();
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".min_vel_x", rclcpp::ParameterValue(0.0001));
+        node, polygon_name_ + ".min_vel_x", rclcpp::ParameterValue(0.005));
       robot_min_vel_x_ =
         node->get_parameter(polygon_name_ + ".min_vel_x").as_double();
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".min_vel_y", rclcpp::ParameterValue(0.0001));
+        node, polygon_name_ + ".min_vel_y", rclcpp::ParameterValue(0.005));
       robot_min_vel_y_ =
         node->get_parameter(polygon_name_ + ".min_vel_y").as_double();
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".min_vel_tw", rclcpp::ParameterValue(0.0001));
+        node, polygon_name_ + ".min_vel_tw", rclcpp::ParameterValue(0.005));
       robot_min_vel_tw_ =
         node->get_parameter(polygon_name_ + ".min_vel_tw").as_double();
       nav2_util::declare_parameter_if_not_declared(
