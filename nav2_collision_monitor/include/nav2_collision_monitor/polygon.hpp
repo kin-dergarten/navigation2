@@ -107,7 +107,7 @@ public:
    * Applicable for APPROACH model.
    * @return robot min velocity
    */
-  double getRobotMinVelocity() const;
+  Velocity getRobotMinVelocity() const;
   /**
    * @brief Obtains if checks are enabled for this polygon.
    * @return true if enabled
