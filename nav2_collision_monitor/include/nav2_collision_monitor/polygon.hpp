@@ -103,6 +103,12 @@ public:
    */
   double getSlowdownRatio() const;
   /**
+   * @brief Obtains minimum velocity robot can have during approach action
+   * Applicable for APPROACH model.
+   * @return robot min velocity
+   */
+  Velocity getRobotMinVelocity() const;
+  /**
    * @brief Obtains if checks are enabled for this polygon.
    * @return true if enabled
    */
@@ -112,6 +118,11 @@ public:
    * @return true if enabled
    */
   bool isDefaultEnabled() const;
+  /**
+   * @brief Obtains if the collsion points need to be filtered based on driving direction
+   * @return true if enabled
+   */
+  bool isFilterPointsByDriveDirectionEnabled() const;
   /**
    * @brief Obtains required time before collision for current polygon.
    * Applicable for APPROACH model.
@@ -149,6 +160,13 @@ public:
   double getCollisionTime(
     const std::vector<Point> & collision_points,
     const Velocity & velocity) const;
+
+  /**
+   * @brief Filter out points that are opposite to the driving direction and not in rotating direction
+   * @param points  Array of 2D obstacle points
+   * @param velocity Robot velocity
+   */
+  void  filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const;
 
   /**
    * @brief Publishes polygon message into a its own topic
@@ -216,6 +234,12 @@ protected:
   std::unique_ptr<nav2_costmap_2d::FootprintSubscriber> footprint_sub_;
   /// @brief Whether polygon is enabled
   bool enabled_;
+  /// @brief Whether the collision points need to be filtered based on driivng direction
+  bool filter_points_by_drive_direction_;
+  /// @brief minimum velocity robot can have
+  double robot_min_vel_x_;
+  double robot_min_vel_y_;
+  double robot_min_vel_tw_;
 
   // Global variables
   /// @brief TF buffer

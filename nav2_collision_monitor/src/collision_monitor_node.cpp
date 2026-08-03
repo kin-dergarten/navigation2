@@ -524,12 +524,36 @@ bool CollisionMonitor::processApproach(
 {
   polygon->updatePolygon();
 
+  std::vector<Point> collision_points_filtered = collision_points;
+  // filtering points based on driving direction and rotation
+  if (polygon->isFilterPointsByDriveDirectionEnabled()) {
+    polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, velocity);
+  }
+  
+  // check if the static polygon already in collision
+  if (polygon->getPointsInside(collision_points_filtered) > polygon->getMaxPoints()) {
+    robot_action.action_type = EMG_STOP;
+    robot_action.req_vel.x = 0.0;
+    robot_action.req_vel.y = 0.0;
+    robot_action.req_vel.tw = 0.0;
+    return true;
+  }
+
   // Obtain time before a collision
-  const double collision_time = polygon->getCollisionTime(collision_points, velocity);
+  const double collision_time = polygon->getCollisionTime(collision_points_filtered, velocity);
   if (collision_time >= 0.0) {
     // If collision will occurr, reduce robot speed
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
     const Velocity safe_vel = velocity * change_ratio;
+    // Check that currently calculated velocity is less than
+    // the robot min velocity. If yes, stop the shuttle
+    if (safe_vel < polygon->getRobotMinVelocity()) {
+      robot_action.action_type = EMG_STOP;
+      robot_action.req_vel.x = 0.0;
+      robot_action.req_vel.y = 0.0;
+      robot_action.req_vel.tw = 0.0;
+      return true;
+    }
     // Check that currently calculated velocity is safer than
     // chosen for previous shapes one
     if (safe_vel < robot_action.req_vel) {

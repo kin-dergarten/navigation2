@@ -154,10 +154,19 @@ bool Polygon::isDefaultEnabled() const
   return default_enabled_;
 }
 
+bool Polygon::isFilterPointsByDriveDirectionEnabled() const
+{
+  return filter_points_by_drive_direction_;
+}
 
 double Polygon::getTimeBeforeCollision() const
 {
   return time_before_collision_;
+}
+
+Velocity Polygon::getRobotMinVelocity() const
+{
+  return {robot_min_vel_x_, robot_min_vel_y_, robot_min_vel_tw_};
 }
 
 void Polygon::getPolygon(std::vector<Point> & poly) const
@@ -207,12 +216,7 @@ double Polygon::getCollisionTime(
   Velocity vel = velocity;
 
   // Array of points transformed to the frame concerned with pose on each simulation step
-  std::vector<Point> points_transformed = collision_points;
-
-  // Check static polygon
-  if (getPointsInside(points_transformed) >= max_points_) {
-    return 0.0;
-  }
+  std::vector<Point> points_transformed;
 
   // Robot movement simulation
   for (double time = 0.0; time <= time_before_collision_; time += simulation_time_step_) {
@@ -232,6 +236,45 @@ double Polygon::getCollisionTime(
   // There is no collision
   return -1.0;
 }
+
+void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const
+{
+  constexpr double kLinearVelocityEps = 1e-6;
+  constexpr double kAngularVelocityEps = 1e-6;
+  constexpr double kPointEps = 1e-9;
+
+  std::vector<Point> filtered_points;
+  filtered_points.reserve(points.size());
+
+  const bool is_pure_rotation =
+    (std::fabs(velocity.x) <= kLinearVelocityEps) &&
+    (std::fabs(velocity.y) <= kLinearVelocityEps) &&
+    (std::fabs(velocity.tw) > kAngularVelocityEps);
+
+  if (is_pure_rotation) {
+    // Quadrant-based turn filter:
+    // CCW (+tw): keep Quadrants I and III  -> x*y > 0 (top-right, bottom-left)
+    // CW  (-tw): keep Quadrants II and IV -> x*y < 0 (top-left, bottom-right)
+    for (const Point & point : points) {
+      const double quadrant_product = point.x * point.y;
+
+      if ((velocity.tw > 0.0 && quadrant_product > kPointEps) ||
+          (velocity.tw <= 0.0 && quadrant_product < -kPointEps)) {
+        filtered_points.push_back(point);
+      }
+    }
+  } else {
+    for (const Point & point : points) {
+      const double inner_product = velocity.x * point.x + velocity.y * point.y;
+      if (inner_product > 0.0) {
+        filtered_points.push_back(point);
+      }
+    }
+  }
+
+  points = std::move(filtered_points);
+}
+
 
 void Polygon::publish() const
 {
@@ -306,9 +349,25 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
       time_before_collision_ =
         node->get_parameter(polygon_name_ + ".time_before_collision").as_double();
       nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".min_vel_x", rclcpp::ParameterValue(0.005));
+      robot_min_vel_x_ =
+        node->get_parameter(polygon_name_ + ".min_vel_x").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".min_vel_y", rclcpp::ParameterValue(0.005));
+      robot_min_vel_y_ =
+        node->get_parameter(polygon_name_ + ".min_vel_y").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".min_vel_tw", rclcpp::ParameterValue(0.005));
+      robot_min_vel_tw_ =
+        node->get_parameter(polygon_name_ + ".min_vel_tw").as_double();
+      nav2_util::declare_parameter_if_not_declared(
         node, polygon_name_ + ".simulation_time_step", rclcpp::ParameterValue(0.1));
       simulation_time_step_ =
         node->get_parameter(polygon_name_ + ".simulation_time_step").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".filter_points_by_drive_direction", rclcpp::ParameterValue(true));
+      filter_points_by_drive_direction_ = 
+        node->get_parameter(polygon_name_ + ".filter_points_by_drive_direction").as_bool();
     }
 
     nav2_util::declare_parameter_if_not_declared(
@@ -409,6 +468,11 @@ Polygon::dynamicParametersCallback(
     if (param_type == rcl_interfaces::msg::ParameterType::PARAMETER_BOOL) {
       if (param_name == polygon_name_ + "." + "enabled") {
         enabled_ = parameter.as_bool();
+      }
+    }
+    if (action_type_ == APPROACH && param_type == rcl_interfaces::msg::ParameterType::PARAMETER_DOUBLE) {
+      if (param_name == polygon_name_ + "." + "time_before_collision") {
+        time_before_collision_ = parameter.as_double();
       }
     }
   }
