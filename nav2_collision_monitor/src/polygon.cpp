@@ -266,8 +266,18 @@ void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, co
   } else {
     for (const Point & point : points) {
       const double inner_product = velocity.x * point.x + velocity.y * point.y;
-      if (inner_product > 0.0) {
-        filtered_points.push_back(point);
+      const bool is_moving_forward = (velocity.x >= 0.0);
+      if (inner_product > 0.0)
+      {
+        if (is_moving_forward) {
+          if (point.x >= footprint_cut_offset_driving_direction_) {
+            filtered_points.push_back(point);
+          }
+        } else {
+          if (point.x <= footprint_cut_offset_driving_direction_) {
+            filtered_points.push_back(point);
+          }
+        }
       }
     }
   }
@@ -368,6 +378,10 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
         node, polygon_name_ + ".filter_points_by_drive_direction", rclcpp::ParameterValue(true));
       filter_points_by_drive_direction_ = 
         node->get_parameter(polygon_name_ + ".filter_points_by_drive_direction").as_bool();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".footprint_cut_offset_driving_direction", rclcpp::ParameterValue(0.0));
+      footprint_cut_offset_driving_direction_ =
+        node->get_parameter(polygon_name_ + ".footprint_cut_offset_driving_direction").as_double();
     }
 
     nav2_util::declare_parameter_if_not_declared(

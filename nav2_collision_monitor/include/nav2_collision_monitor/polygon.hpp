@@ -236,6 +236,8 @@ protected:
   bool enabled_;
   /// @brief Whether the collision points need to be filtered based on driivng direction
   bool filter_points_by_drive_direction_;
+  /// @brief Offset for cutting the footprint in the driving direction
+  double footprint_cut_offset_driving_direction_;
   /// @brief minimum velocity robot can have
   double robot_min_vel_x_;
   double robot_min_vel_y_;

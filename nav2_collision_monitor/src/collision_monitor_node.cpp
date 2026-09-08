@@ -548,6 +548,8 @@ bool CollisionMonitor::processApproach(
     // Check that currently calculated velocity is less than
     // the robot min velocity. If yes, stop the shuttle
     if (safe_vel < polygon->getRobotMinVelocity()) {
+      ostop_triggered_ = true;
+      ostop_release_counter = 0;
       robot_action.action_type = EMG_STOP;
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
@@ -557,6 +559,17 @@ bool CollisionMonitor::processApproach(
     // Check that currently calculated velocity is safer than
     // chosen for previous shapes one
     if (safe_vel < robot_action.req_vel) {
+      if (ostop_triggered_) {
+        if (++ostop_release_counter < 3) {
+          robot_action.action_type = EMG_STOP;
+          robot_action.req_vel.x = 0.0;
+          robot_action.req_vel.y = 0.0;
+          robot_action.req_vel.tw = 0.0;
+          return true;
+        }
+        ostop_triggered_ = false;
+        ostop_release_counter = 0;
+      }
       robot_action.action_type = APPROACH;
       robot_action.req_vel = safe_vel;
       return true;
