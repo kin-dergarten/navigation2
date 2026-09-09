@@ -546,35 +546,25 @@ bool CollisionMonitor::processApproach(
     const Velocity safe_vel = velocity * change_ratio;
 
     const Velocity min_vel = polygon->getRobotMinVelocity();
-    // Release threshold sits ABOVE the stop threshold to create a hysteresis
-    // band. Tune 1.5 (or expose as a parameter) to taste.
-    const Velocity release_vel = min_vel * 2.5;
+    const Velocity vel_to_start_again = min_vel * polygon->getVelocityToStartAgainAfterOstopFactor();
 
-    // --- Decide E-stop with hysteresis ---
-    // Enter E-stop when safe_vel drops below min.
-    // Once latched, STAY in E-stop until safe_vel recovers past release_vel.
-    const bool below_stop    = (safe_vel < min_vel);
-    const bool below_release = (safe_vel < release_vel);
+    const bool below_stop_vel    = (safe_vel < min_vel);
+    const bool below_start_again_vel = (safe_vel < vel_to_start_again);
 
-    if (below_stop || (ostop_triggered_ && below_release)) {
-      ostop_triggered_ = true;
+    if (below_stop_vel || (ostop_triggered_ && below_start_again_vel)) {
       robot_action.action_type = EMG_STOP;
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
       robot_action.req_vel.tw = 0.0;
       return true;
     }
-
-    // Clearly recovered -> release the latch and allow normal approach.
     ostop_triggered_ = false;
-
     if (safe_vel < robot_action.req_vel) {
       robot_action.action_type = APPROACH;
       robot_action.req_vel = safe_vel;
       return true;
     }
   } else {
-    // No collision predicted -> situation resolved, clear the latch.
     ostop_triggered_ = false;
   }
 

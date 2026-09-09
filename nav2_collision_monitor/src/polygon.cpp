@@ -169,6 +169,11 @@ Velocity Polygon::getRobotMinVelocity() const
   return {robot_min_vel_x_, robot_min_vel_y_, robot_min_vel_tw_};
 }
 
+double Polygon::getVelocityToStartAgainAfterOstopFactor() const
+{
+  return vel_to_start_again_after_ostop_factor_;
+}
+
 void Polygon::getPolygon(std::vector<Point> & poly) const
 {
   poly = poly_;
@@ -382,6 +387,10 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
         node, polygon_name_ + ".footprint_cut_offset_driving_direction", rclcpp::ParameterValue(0.0));
       footprint_cut_offset_driving_direction_ =
         node->get_parameter(polygon_name_ + ".footprint_cut_offset_driving_direction").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".vel_to_start_again_after_ostop_factor_", rclcpp::ParameterValue(0.0));
+      vel_to_start_again_after_ostop_factor_ =
+        node->get_parameter(polygon_name_ + ".vel_to_start_again_after_ostop_factor_").as_double();
     }
 
     nav2_util::declare_parameter_if_not_declared(

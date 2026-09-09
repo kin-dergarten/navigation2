@@ -109,6 +109,11 @@ public:
    */
   Velocity getRobotMinVelocity() const;
   /**
+   * @brief Obtains minimum velocity to start again after operational stop for approach model
+   * @return Minimum velocity to start again after operational stop
+   */
+  double getVelocityToStartAgainAfterOstopFactor() const;
+  /**
    * @brief Obtains if checks are enabled for this polygon.
    * @return true if enabled
    */
@@ -238,10 +243,13 @@ protected:
   bool filter_points_by_drive_direction_;
   /// @brief Offset for cutting the footprint in the driving direction
   double footprint_cut_offset_driving_direction_;
-  /// @brief minimum velocity robot can have
+  /// @brief minimum velocity robot can have for approach model
   double robot_min_vel_x_;
   double robot_min_vel_y_;
   double robot_min_vel_tw_;
+
+  /// @brief minimum velocity to start again after operational stop for approach model
+  double vel_to_start_again_after_ostop_factor_;
 
   // Global variables
   /// @brief TF buffer
