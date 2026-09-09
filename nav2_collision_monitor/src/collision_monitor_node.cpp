@@ -542,38 +542,40 @@ bool CollisionMonitor::processApproach(
   // Obtain time before a collision
   const double collision_time = polygon->getCollisionTime(collision_points_filtered, velocity);
   if (collision_time >= 0.0) {
-    // If collision will occurr, reduce robot speed
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
     const Velocity safe_vel = velocity * change_ratio;
-    // Check that currently calculated velocity is less than
-    // the robot min velocity. If yes, stop the shuttle
-    if (safe_vel < polygon->getRobotMinVelocity()) {
+
+    const Velocity min_vel = polygon->getRobotMinVelocity();
+    // Release threshold sits ABOVE the stop threshold to create a hysteresis
+    // band. Tune 1.5 (or expose as a parameter) to taste.
+    const Velocity release_vel = min_vel * 2.5;
+
+    // --- Decide E-stop with hysteresis ---
+    // Enter E-stop when safe_vel drops below min.
+    // Once latched, STAY in E-stop until safe_vel recovers past release_vel.
+    const bool below_stop    = (safe_vel < min_vel);
+    const bool below_release = (safe_vel < release_vel);
+
+    if (below_stop || (ostop_triggered_ && below_release)) {
       ostop_triggered_ = true;
-      ostop_release_counter = 0;
       robot_action.action_type = EMG_STOP;
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
       robot_action.req_vel.tw = 0.0;
       return true;
     }
-    // Check that currently calculated velocity is safer than
-    // chosen for previous shapes one
+
+    // Clearly recovered -> release the latch and allow normal approach.
+    ostop_triggered_ = false;
+
     if (safe_vel < robot_action.req_vel) {
-      if (ostop_triggered_) {
-        if (++ostop_release_counter < 3) {
-          robot_action.action_type = EMG_STOP;
-          robot_action.req_vel.x = 0.0;
-          robot_action.req_vel.y = 0.0;
-          robot_action.req_vel.tw = 0.0;
-          return true;
-        }
-        ostop_triggered_ = false;
-        ostop_release_counter = 0;
-      }
       robot_action.action_type = APPROACH;
       robot_action.req_vel = safe_vel;
       return true;
     }
+  } else {
+    // No collision predicted -> situation resolved, clear the latch.
+    ostop_triggered_ = false;
   }
 
   return false;
