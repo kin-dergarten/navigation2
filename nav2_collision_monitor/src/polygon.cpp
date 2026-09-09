@@ -388,9 +388,9 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
       footprint_cut_offset_driving_direction_ =
         node->get_parameter(polygon_name_ + ".footprint_cut_offset_driving_direction").as_double();
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".vel_to_start_again_after_ostop_factor_", rclcpp::ParameterValue(0.0));
+        node, polygon_name_ + ".vel_to_start_again_after_ostop_factor", rclcpp::ParameterValue(0.0));
       vel_to_start_again_after_ostop_factor_ =
-        node->get_parameter(polygon_name_ + ".vel_to_start_again_after_ostop_factor_").as_double();
+        node->get_parameter(polygon_name_ + ".vel_to_start_again_after_ostop_factor").as_double();
     }
 
     nav2_util::declare_parameter_if_not_declared(
