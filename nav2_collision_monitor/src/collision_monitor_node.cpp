@@ -552,6 +552,7 @@ bool CollisionMonitor::processApproach(
     const bool below_start_again_vel = (safe_vel < vel_to_start_again);
 
     if (below_stop_vel || (ostop_triggered_ && below_start_again_vel)) {
+      ostop_triggered_ = true;
       robot_action.action_type = EMG_STOP;
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
