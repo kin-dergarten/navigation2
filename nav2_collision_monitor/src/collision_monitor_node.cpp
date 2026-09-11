@@ -542,25 +542,31 @@ bool CollisionMonitor::processApproach(
   // Obtain time before a collision
   const double collision_time = polygon->getCollisionTime(collision_points_filtered, velocity);
   if (collision_time >= 0.0) {
-    // If collision will occurr, reduce robot speed
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
     const Velocity safe_vel = velocity * change_ratio;
-    // Check that currently calculated velocity is less than
-    // the robot min velocity. If yes, stop the shuttle
-    if (safe_vel < polygon->getRobotMinVelocity()) {
+
+    const Velocity min_vel = polygon->getRobotMinVelocity();
+    const Velocity vel_to_start_again = min_vel * polygon->getVelocityToStartAgainAfterOstopFactor();
+
+    const bool below_stop_vel    = (safe_vel < min_vel);
+    const bool below_start_again_vel = (safe_vel < vel_to_start_again);
+    // If the safe_vel is below min_vel we trigger O stop and we stay in Ostop until we reach vel_to_start_again
+    if (below_stop_vel || (ostop_triggered_ && below_start_again_vel)) {
+      ostop_triggered_ = true;
       robot_action.action_type = EMG_STOP;
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
       robot_action.req_vel.tw = 0.0;
       return true;
     }
-    // Check that currently calculated velocity is safer than
-    // chosen for previous shapes one
+    ostop_triggered_ = false;
     if (safe_vel < robot_action.req_vel) {
       robot_action.action_type = APPROACH;
       robot_action.req_vel = safe_vel;
       return true;
     }
+  } else {
+    ostop_triggered_ = false;
   }
 
   return false;
