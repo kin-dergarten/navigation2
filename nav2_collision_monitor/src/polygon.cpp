@@ -275,11 +275,11 @@ void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, co
       if (inner_product > 0.0)
       {
         if (is_moving_forward) {
-          if (point.x >= footprint_cut_offset_driving_direction_) {
+          if (point.x >= filter_points_in_driving_direction_offset_) {
             filtered_points.push_back(point);
           }
         } else {
-          if (point.x <= footprint_cut_offset_driving_direction_) {
+          if (point.x <= filter_points_in_driving_direction_offset_) {
             filtered_points.push_back(point);
           }
         }
@@ -384,9 +384,9 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
       filter_points_by_drive_direction_ = 
         node->get_parameter(polygon_name_ + ".filter_points_by_drive_direction").as_bool();
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".footprint_cut_offset_driving_direction", rclcpp::ParameterValue(0.0));
-      footprint_cut_offset_driving_direction_ =
-        node->get_parameter(polygon_name_ + ".footprint_cut_offset_driving_direction").as_double();
+        node, polygon_name_ + ".filter_points_in_driving_direction_offset", rclcpp::ParameterValue(0.0));
+      filter_points_in_driving_direction_offset_ =
+        node->get_parameter(polygon_name_ + ".filter_points_in_driving_direction_offset").as_double();
       nav2_util::declare_parameter_if_not_declared(
         node, polygon_name_ + ".vel_to_start_again_after_ostop_factor", rclcpp::ParameterValue(0.0));
       vel_to_start_again_after_ostop_factor_ =

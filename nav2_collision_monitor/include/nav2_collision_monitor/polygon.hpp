@@ -239,10 +239,10 @@ protected:
   std::unique_ptr<nav2_costmap_2d::FootprintSubscriber> footprint_sub_;
   /// @brief Whether polygon is enabled
   bool enabled_;
-  /// @brief Whether the collision points need to be filtered based on driivng direction
+  /// @brief Whether the collision points need to be filtered based on driving direction
   bool filter_points_by_drive_direction_;
-  /// @brief Offset for cutting the footprint in the driving direction
-  double footprint_cut_offset_driving_direction_;
+  /// @brief Offset for filtering the points in the driving direction
+  double filter_points_in_driving_direction_offset_;
   /// @brief minimum velocity robot can have for approach model
   double robot_min_vel_x_;
   double robot_min_vel_y_;

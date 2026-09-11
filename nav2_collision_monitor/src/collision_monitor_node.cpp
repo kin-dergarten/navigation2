@@ -550,7 +550,7 @@ bool CollisionMonitor::processApproach(
 
     const bool below_stop_vel    = (safe_vel < min_vel);
     const bool below_start_again_vel = (safe_vel < vel_to_start_again);
-
+    // If the safe_vel is below min_vel we trigger O stop and we stay in Ostop until we reach vel_to_start_again
     if (below_stop_vel || (ostop_triggered_ && below_start_again_vel)) {
       ostop_triggered_ = true;
       robot_action.action_type = EMG_STOP;
