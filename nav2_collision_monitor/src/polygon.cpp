@@ -169,9 +169,9 @@ Velocity Polygon::getRobotMinVelocity() const
   return {robot_min_vel_x_, robot_min_vel_y_, robot_min_vel_tw_};
 }
 
-double Polygon::getVelocityToStartAgainAfterOstopFactor() const
+double Polygon::getOstopReleaseVelFactor() const
 {
-  return vel_to_start_again_after_ostop_factor_;
+  return ostop_release_vel_factor_;
 }
 
 void Polygon::getPolygon(std::vector<Point> & poly) const
@@ -271,17 +271,13 @@ void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, co
   } else {
     for (const Point & point : points) {
       const double inner_product = velocity.x * point.x + velocity.y * point.y;
-      const bool is_moving_forward = (velocity.x >= 0.0);
       if (inner_product > 0.0)
       {
-        if (is_moving_forward) {
-          if (point.x >= filter_points_in_driving_direction_offset_) {
-            filtered_points.push_back(point);
-          }
-        } else {
-          if (point.x <= filter_points_in_driving_direction_offset_) {
-            filtered_points.push_back(point);
-          }
+        const bool is_moving_forward = (velocity.x >= 0.0);
+        if ((is_moving_forward && point.x >= filter_points_in_driving_direction_offset_) ||
+            (!is_moving_forward && point.x <= filter_points_in_driving_direction_offset_))
+        {
+          filtered_points.push_back(point);
         }
       }
     }
@@ -389,7 +385,7 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
         node->get_parameter(polygon_name_ + ".filter_points_in_driving_direction_offset").as_double();
       nav2_util::declare_parameter_if_not_declared(
         node, polygon_name_ + ".vel_to_start_again_after_ostop_factor", rclcpp::ParameterValue(0.0));
-      vel_to_start_again_after_ostop_factor_ =
+      ostop_release_vel_factor_ =
         node->get_parameter(polygon_name_ + ".vel_to_start_again_after_ostop_factor").as_double();
     }
 

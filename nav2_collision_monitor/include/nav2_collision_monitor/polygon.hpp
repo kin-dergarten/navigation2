@@ -109,10 +109,10 @@ public:
    */
   Velocity getRobotMinVelocity() const;
   /**
-   * @brief Obtains minimum velocity to start again after operational stop for approach model
-   * @return Minimum velocity to start again after operational stop
+   * @brief Obtains factor applied to the minimum velocity to decide if the ostop can be released
+   * @return Factor applied to the minimum velocity to decide if the ostop can be released
    */
-  double getVelocityToStartAgainAfterOstopFactor() const;
+  double getOstopReleaseVelFactor() const;
   /**
    * @brief Obtains if checks are enabled for this polygon.
    * @return true if enabled
@@ -248,8 +248,8 @@ protected:
   double robot_min_vel_y_;
   double robot_min_vel_tw_;
 
-  /// @brief minimum velocity to start again after operational stop for approach model
-  double vel_to_start_again_after_ostop_factor_;
+  /// @brief Factor applied to the minimum velocity to decide if the ostop can be released
+  double ostop_release_vel_factor_;
 
   // Global variables
   /// @brief TF buffer

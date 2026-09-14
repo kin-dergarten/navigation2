@@ -546,7 +546,7 @@ bool CollisionMonitor::processApproach(
     const Velocity safe_vel = velocity * change_ratio;
 
     const Velocity min_vel = polygon->getRobotMinVelocity();
-    const Velocity vel_to_start_again = min_vel * polygon->getVelocityToStartAgainAfterOstopFactor();
+    const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
 
     const bool below_stop_vel    = (safe_vel < min_vel);
     const bool below_start_again_vel = (safe_vel < vel_to_start_again);
