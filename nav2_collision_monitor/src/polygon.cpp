@@ -384,9 +384,9 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
       filter_points_in_driving_direction_offset_ =
         node->get_parameter(polygon_name_ + ".filter_points_in_driving_direction_offset").as_double();
       nav2_util::declare_parameter_if_not_declared(
-        node, polygon_name_ + ".vel_to_start_again_after_ostop_factor", rclcpp::ParameterValue(0.0));
+        node, polygon_name_ + ".ostop_release_vel_factor", rclcpp::ParameterValue(0.0));
       ostop_release_vel_factor_ =
-        node->get_parameter(polygon_name_ + ".vel_to_start_again_after_ostop_factor").as_double();
+        node->get_parameter(polygon_name_ + ".ostop_release_vel_factor").as_double();
     }
 
     nav2_util::declare_parameter_if_not_declared(
