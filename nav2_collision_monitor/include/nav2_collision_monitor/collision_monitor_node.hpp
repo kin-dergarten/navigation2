@@ -241,6 +241,8 @@ protected:
   rclcpp::Duration stop_pub_timeout_;
   /// @brief Minimal interval fields should be processed
   rclcpp::Duration minimal_process_interval_;
+  /// @brief Whether O stop has been triggered by approach warning fields
+  mutable bool ostop_triggered_ = false;
 };  // class CollisionMonitor
 
 }  // namespace nav2_collision_monitor
