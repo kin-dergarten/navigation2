@@ -522,21 +522,11 @@ bool CollisionMonitor::processApproach(
   const Velocity & velocity,
   Action & robot_action) const
 {
-  const bool is_zero_velocity = velocity.isZero();
-  // if robot is in Ostop and cmd vel is zero, we stay in Ostop
-  if (ostop_triggered_ && is_zero_velocity) {
-    robot_action.action_type = EMG_STOP;
-    robot_action.req_vel.x = 0.0;
-    robot_action.req_vel.y = 0.0;
-    robot_action.req_vel.tw = 0.0;
-    return true;
-  }
-
   polygon->updatePolygon();
 
   std::vector<Point> collision_points_filtered = collision_points;
   // filtering points based on driving direction and rotation
-  if (polygon->isFilterPointsByDriveDirectionEnabled()) {
+  if (polygon->isFilterPointsByDriveDirectionEnabled() && !velocity.isZero()) {
     polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, velocity);
   }
   
