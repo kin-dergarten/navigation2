@@ -526,7 +526,7 @@ bool CollisionMonitor::processApproach(
 
   std::vector<Point> collision_points_filtered = collision_points;
   // filtering points based on driving direction and rotation
-  if (polygon->isFilterPointsByDriveDirectionEnabled() && !velocity.isZero()) {
+  if (polygon->isFilterPointsByDriveDirectionEnabled()) {
     polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, velocity);
   }
   
@@ -566,6 +566,11 @@ bool CollisionMonitor::processApproach(
       return true;
     }
   } else {
+    if (ostop_triggered_ && velocity.isZero()) {
+      // If the robot is stopped and we are in Ostop, we stay in Ostop until we reach vel_to_start_again
+      ostop_triggered_ = true;
+      return true;
+    }
     ostop_triggered_ = false;
   }
 
