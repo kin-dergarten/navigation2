@@ -569,6 +569,9 @@ bool CollisionMonitor::processApproach(
   } else {
     if (ostop_triggered_ && velocity.isZero()) {
       // If the robot is stopped and we are in Ostop, we stay in Ostop until we reach vel_to_start_again
+      robot_action.req_vel.x = 0.0;
+      robot_action.req_vel.y = 0.0;
+      robot_action.req_vel.tw = 0.0;
       return true;
     }
     ostop_triggered_ = false;
