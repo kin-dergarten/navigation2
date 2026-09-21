@@ -532,6 +532,7 @@ bool CollisionMonitor::processApproach(
   
   // check if the static polygon already in collision
   if (polygon->getPointsInside(collision_points_filtered) > polygon->getMaxPoints()) {
+    ostop_triggered_ = true;
     robot_action.action_type = EMG_STOP;
     robot_action.req_vel.x = 0.0;
     robot_action.req_vel.y = 0.0;
@@ -568,7 +569,6 @@ bool CollisionMonitor::processApproach(
   } else {
     if (ostop_triggered_ && velocity.isZero()) {
       // If the robot is stopped and we are in Ostop, we stay in Ostop until we reach vel_to_start_again
-      ostop_triggered_ = true;
       return true;
     }
     ostop_triggered_ = false;
