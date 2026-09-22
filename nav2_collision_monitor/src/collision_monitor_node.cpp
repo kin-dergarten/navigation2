@@ -539,14 +539,13 @@ bool CollisionMonitor::processApproach(
     robot_action.req_vel.tw = 0.0;
     return true;
   }
+  const Velocity min_vel = polygon->getRobotMinVelocity();
   const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
   // Obtain time before a collision
   const double collision_time = polygon->getCollisionTime(collision_points_filtered, velocity);
   if (collision_time >= 0.0) {
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
     const Velocity safe_vel = velocity * change_ratio;
-
-    const Velocity min_vel = polygon->getRobotMinVelocity();
 
     const bool below_stop_vel    = (safe_vel < min_vel);
     const bool below_start_again_vel = (safe_vel < vel_to_start_again);
