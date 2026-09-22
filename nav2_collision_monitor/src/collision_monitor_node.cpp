@@ -31,7 +31,7 @@ CollisionMonitor::CollisionMonitor(const rclcpp::NodeOptions & options)
 : nav2_util::LifecycleNode("collision_monitor", "", options),
   process_active_(false), robot_action_prev_{DO_NOTHING, {-1.0, -1.0, -1.0}},
   stop_stamp_{0, 0, get_clock()->get_clock_type()}, last_time_processed_{0, 0, get_clock()->get_clock_type()},
-  stop_pub_timeout_(1.0, 0.0), minimal_process_interval_(rclcpp::Duration::from_seconds(0.5))
+  stop_pub_timeout_(1.0, 0.0), minimal_process_interval_(rclcpp::Duration::from_seconds(0.5), prev_robot_vel_{0.0, 0.0, 0.0})
 {
 }
 
@@ -525,33 +525,39 @@ bool CollisionMonitor::processApproach(
   polygon->updatePolygon();
 
   std::vector<Point> collision_points_filtered = collision_points;
+  Velocity process_vel = velocity;
+  if (ostop_triggered_ && velocity.isZero()) {
+    process_vel = prev_robot_vel_;
+  }
   // filtering points based on driving direction and rotation
   if (polygon->isFilterPointsByDriveDirectionEnabled()) {
-    polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, velocity);
+    polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, process_vel);
   }
   
   // check if the static polygon already in collision
   if (polygon->getPointsInside(collision_points_filtered) > polygon->getMaxPoints()) {
     ostop_triggered_ = true;
+    prev_robot_vel_ = process_vel;
     robot_action.action_type = EMG_STOP;
     robot_action.req_vel.x = 0.0;
     robot_action.req_vel.y = 0.0;
     robot_action.req_vel.tw = 0.0;
     return true;
   }
-  const Velocity min_vel = polygon->getRobotMinVelocity();
-  const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
   // Obtain time before a collision
-  const double collision_time = polygon->getCollisionTime(collision_points_filtered, velocity);
+  const double collision_time = polygon->getCollisionTime(collision_points_filtered, process_vel);
   if (collision_time >= 0.0) {
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
-    const Velocity safe_vel = velocity * change_ratio;
+    const Velocity safe_vel = process_vel * change_ratio;
 
+    const Velocity min_vel = polygon->getRobotMinVelocity();
+    const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
     const bool below_stop_vel    = (safe_vel < min_vel);
     const bool below_start_again_vel = (safe_vel < vel_to_start_again);
     // If the safe_vel is below min_vel we trigger O stop and we stay in Ostop until we reach vel_to_start_again
     if (below_stop_vel || (ostop_triggered_ && below_start_again_vel)) {
       ostop_triggered_ = true;
+      prev_robot_vel_ = process_vel;
       robot_action.action_type = EMG_STOP;
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
@@ -565,13 +571,6 @@ bool CollisionMonitor::processApproach(
       return true;
     }
   } else {
-    if (ostop_triggered_ && (velocity < vel_to_start_again)) {
-      // If the robot is stopped and we are in Ostop, we stay in Ostop until we reach vel_to_start_again
-      robot_action.req_vel.x = 0.0;
-      robot_action.req_vel.y = 0.0;
-      robot_action.req_vel.tw = 0.0;
-      return true;
-    }
     ostop_triggered_ = false;
   }
 
