@@ -539,7 +539,7 @@ bool CollisionMonitor::processApproach(
     robot_action.req_vel.tw = 0.0;
     return true;
   }
-
+  const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
   // Obtain time before a collision
   const double collision_time = polygon->getCollisionTime(collision_points_filtered, velocity);
   if (collision_time >= 0.0) {
@@ -547,7 +547,6 @@ bool CollisionMonitor::processApproach(
     const Velocity safe_vel = velocity * change_ratio;
 
     const Velocity min_vel = polygon->getRobotMinVelocity();
-    const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
 
     const bool below_stop_vel    = (safe_vel < min_vel);
     const bool below_start_again_vel = (safe_vel < vel_to_start_again);
@@ -567,7 +566,7 @@ bool CollisionMonitor::processApproach(
       return true;
     }
   } else {
-    if (ostop_triggered_ && velocity.isZero()) {
+    if (ostop_triggered_ && (velocity < vel_to_start_again)) {
       // If the robot is stopped and we are in Ostop, we stay in Ostop until we reach vel_to_start_again
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
