@@ -525,19 +525,21 @@ bool CollisionMonitor::processApproach(
   polygon->updatePolygon();
 
   std::vector<Point> collision_points_filtered = collision_points;
-  Velocity process_vel = velocity;
+  Velocity collision_check_vel = velocity;
+  bool use_prev_robot_vel = false;
   if (ostop_triggered_ && velocity.isZero()) {
-    process_vel = prev_robot_vel_;
+    use_prev_robot_vel = true;
+    collision_check_vel = prev_robot_vel_;
   }
   // filtering points based on driving direction and rotation
   if (polygon->isFilterPointsByDriveDirectionEnabled()) {
-    polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, process_vel);
+    polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, collision_check_vel);
   }
   
   // check if the static polygon already in collision
   if (polygon->getPointsInside(collision_points_filtered) > polygon->getMaxPoints()) {
     ostop_triggered_ = true;
-    prev_robot_vel_ = process_vel;
+    prev_robot_vel_ = collision_check_vel;
     robot_action.action_type = EMG_STOP;
     robot_action.req_vel.x = 0.0;
     robot_action.req_vel.y = 0.0;
@@ -545,20 +547,21 @@ bool CollisionMonitor::processApproach(
     return true;
   }
   // Obtain time before a collision
-  const double collision_time = polygon->getCollisionTime(collision_points_filtered, process_vel);
+  const double collision_time = polygon->getCollisionTime(collision_points_filtered, collision_check_vel);
   if (collision_time >= 0.0) {
     // If collision will occurr, reduce robot speed
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
-    const Velocity safe_vel = process_vel * change_ratio;
+    const Velocity safe_vel = collision_check_vel * change_ratio;
 
     const Velocity min_vel = polygon->getRobotMinVelocity();
     const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
     const bool below_stop_vel    = (safe_vel < min_vel);
     const bool below_start_again_vel = (safe_vel < vel_to_start_again);
+
     // If the safe_vel is below min_vel we trigger O stop and we stay in Ostop until we reach vel_to_start_again
     if (below_stop_vel || (ostop_triggered_ && below_start_again_vel)) {
       ostop_triggered_ = true;
-      prev_robot_vel_ = process_vel;
+      prev_robot_vel_ = collision_check_vel;
       robot_action.action_type = EMG_STOP;
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
@@ -566,6 +569,11 @@ bool CollisionMonitor::processApproach(
       return true;
     }
     ostop_triggered_ = false;
+    // we only check for collisions and toggle O-stop but not change velocity when current cmd vel is zero and already in O-stop
+    if (use_prev_robot_vel)
+    {
+      return false;
+    }
     // Check that currently calculated velocity is safer than
     // chosen for previous shapes one
     if (safe_vel < robot_action.req_vel) {
