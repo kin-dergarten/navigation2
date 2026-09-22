@@ -31,7 +31,7 @@ CollisionMonitor::CollisionMonitor(const rclcpp::NodeOptions & options)
 : nav2_util::LifecycleNode("collision_monitor", "", options),
   process_active_(false), robot_action_prev_{DO_NOTHING, {-1.0, -1.0, -1.0}},
   stop_stamp_{0, 0, get_clock()->get_clock_type()}, last_time_processed_{0, 0, get_clock()->get_clock_type()},
-  stop_pub_timeout_(1.0, 0.0), minimal_process_interval_(rclcpp::Duration::from_seconds(0.5), prev_robot_vel_{0.0, 0.0, 0.0})
+  stop_pub_timeout_(1.0, 0.0), minimal_process_interval_(rclcpp::Duration::from_seconds(0.5)), prev_robot_vel_{0.0, 0.0, 0.0}
 {
 }
 
@@ -547,6 +547,7 @@ bool CollisionMonitor::processApproach(
   // Obtain time before a collision
   const double collision_time = polygon->getCollisionTime(collision_points_filtered, process_vel);
   if (collision_time >= 0.0) {
+    // If collision will occurr, reduce robot speed
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
     const Velocity safe_vel = process_vel * change_ratio;
 
@@ -565,6 +566,8 @@ bool CollisionMonitor::processApproach(
       return true;
     }
     ostop_triggered_ = false;
+    // Check that currently calculated velocity is safer than
+    // chosen for previous shapes one
     if (safe_vel < robot_action.req_vel) {
       robot_action.action_type = APPROACH;
       robot_action.req_vel = safe_vel;
