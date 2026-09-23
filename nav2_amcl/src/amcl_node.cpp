@@ -723,6 +723,8 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
 
   pf_vector_t delta = pf_vector_zero();
   bool force_publication = false;
+  const bool recovery_active_at_scan_start =
+    recovery_run_count_ > 0 || recovery_scan_count_ > 0;
   if (!pf_init_) {
     // Pose at last filter update
     pf_odom_pose_ = pose;
@@ -775,15 +777,19 @@ AmclNode::laserReceived(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan)
       publishParticleCloud(set);
     }
   }
-  if (resampled || force_publication || !first_pose_sent_) {
+  if (resampled || force_publication || !first_pose_sent_ || recovery_active_at_scan_start) {
     amcl_hyp_t max_weight_hyps;
     std::vector<amcl_hyp_t> hyps;
     int max_weight_hyp = -1;
     if (getMaxWeightHyp(hyps, max_weight_hyps, max_weight_hyp)) {
       publishAmclPose(laser_scan, hyps, max_weight_hyp);
-      calculateMaptoOdomTransform(laser_scan, hyps, max_weight_hyp);
 
-      if (tf_broadcast_ == true) {
+      const bool recovery_in_progress = recovery_run_count_ > 0 || recovery_scan_count_ > 0;
+      if (!recovery_in_progress) {
+        calculateMaptoOdomTransform(laser_scan, hyps, max_weight_hyp);
+      }
+
+      if (tf_broadcast_ == true && (!recovery_in_progress || latest_tf_valid_)) {
         // We want to send a transform that is good up until a
         // tolerance time so that odom can be used
         auto stamp = tf2_ros::fromMsg(laser_scan->header.stamp);
