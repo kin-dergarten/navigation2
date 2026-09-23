@@ -530,12 +530,16 @@ bool CollisionMonitor::processApproach(
   const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
   Velocity collision_check_vel = velocity;
   bool use_prev_robot_vel = false;
-  if (ostop_triggered_ && velocity.isZero()) {
+  if (ostop_triggered_ && (velocity < vel_to_start_again)) {
     use_prev_robot_vel = true;
-    collision_check_vel = prev_robot_vel_;
+    collision_check_vel = {
+      std::copysign(vel_to_start_again.x, prev_robot_vel_.x),
+      std::copysign(vel_to_start_again.y, prev_robot_vel_.y),
+      std::copysign(vel_to_start_again.tw, prev_robot_vel_.tw)
+    };
     RCLCPP_INFO(
       get_logger(),
-      "Using Start again vel with direction we are driving, velocity (%.2f, %.2f, %.2f)", collision_check_vel.x, collision_check_vel.y, collision_check_vel.tw);
+      "Using Start again vel with direction we are driving, velocity (%.4f, %.4f, %.4f)", collision_check_vel.x, collision_check_vel.y, collision_check_vel.tw);
   }
   // filtering points based on driving direction and rotation
   if (polygon->isFilterPointsByDriveDirectionEnabled()) {
