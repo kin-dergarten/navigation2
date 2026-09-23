@@ -17,6 +17,7 @@
 #include <exception>
 #include <utility>
 #include <functional>
+#include <cmath>
 
 #include "tf2_ros/create_timer_ros.h"
 
@@ -525,11 +526,20 @@ bool CollisionMonitor::processApproach(
   polygon->updatePolygon();
 
   std::vector<Point> collision_points_filtered = collision_points;
+  const Velocity min_vel = polygon->getRobotMinVelocity();
+  const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
   Velocity collision_check_vel = velocity;
   bool use_prev_robot_vel = false;
   if (ostop_triggered_ && velocity.isZero()) {
     use_prev_robot_vel = true;
-    collision_check_vel = prev_robot_vel_;
+    collision_check_vel = {
+      std::copysign(vel_to_start_again.x, prev_robot_vel_.x),
+      std::copysign(vel_to_start_again.y, prev_robot_vel_.y),
+      std::copysign(vel_to_start_again.tw, prev_robot_vel_.tw)
+    };
+    RCLCPP_INFO(
+      get_logger(),
+      "Using Start again vel with direction we are driving, velocity (%.2f, %.2f, %.2f)", collision_check_vel.x, collision_check_vel.y, collision_check_vel.tw);
   }
   // filtering points based on driving direction and rotation
   if (polygon->isFilterPointsByDriveDirectionEnabled()) {
@@ -553,8 +563,6 @@ bool CollisionMonitor::processApproach(
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
     const Velocity safe_vel = collision_check_vel * change_ratio;
 
-    const Velocity min_vel = polygon->getRobotMinVelocity();
-    const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
     const bool below_stop_vel    = (safe_vel < min_vel);
     const bool below_start_again_vel = (safe_vel < vel_to_start_again);
 
@@ -572,6 +580,9 @@ bool CollisionMonitor::processApproach(
     // we only check for collisions and toggle O-stop but not change velocity when current cmd vel is zero and already in O-stop
     if (use_prev_robot_vel)
     {
+      RCLCPP_INFO(
+      get_logger(),
+      "Releasing Ostop after obstacle is cleared");
       return false;
     }
     // Check that currently calculated velocity is safer than
