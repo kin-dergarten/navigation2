@@ -42,6 +42,13 @@ struct Velocity
   {
     return x == 0.0 && y == 0.0 && tw == 0.0;
   }
+
+  inline bool isPureRotation() const
+  {
+    return (std::fabs(x) <= 1e-6) &&
+    (std::fabs(y) <= 1e-6) &&
+    (std::fabs(tw) > 1e-6);
+  }
 };
 
 /// @brief 2D point

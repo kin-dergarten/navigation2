@@ -251,12 +251,7 @@ void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, co
   std::vector<Point> filtered_points;
   filtered_points.reserve(points.size());
 
-  const bool is_pure_rotation =
-    (std::fabs(velocity.x) <= kLinearVelocityEps) &&
-    (std::fabs(velocity.y) <= kLinearVelocityEps) &&
-    (std::fabs(velocity.tw) > kAngularVelocityEps);
-
-  if (is_pure_rotation) {
+  if (velocity.isPureRotation()) {
     // Quadrant-based turn filter:
     // CCW (+tw): keep Quadrants I and III  -> x*y > 0 (top-right, bottom-left)
     // CW  (-tw): keep Quadrants II and IV -> x*y < 0 (top-left, bottom-right)
