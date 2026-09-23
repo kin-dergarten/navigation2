@@ -244,8 +244,6 @@ double Polygon::getCollisionTime(
 
 void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const
 {
-  constexpr double kLinearVelocityEps = 1e-6;
-  constexpr double kAngularVelocityEps = 1e-6;
   constexpr double kPointEps = 1e-9;
 
   std::vector<Point> filtered_points;
