@@ -538,9 +538,6 @@ bool CollisionMonitor::processApproach(
     } else {
       collision_check_vel = {std::copysign(vel_to_start_again.x, prev_robot_vel_.x), std::copysign(vel_to_start_again.y, prev_robot_vel_.y), 0.0};
     }
-    RCLCPP_INFO(
-      get_logger(),
-      "Using Start again vel with direction we are driving, velocity (%.4f, %.4f, %.4f)", collision_check_vel.x, collision_check_vel.y, collision_check_vel.tw);
   }
 
   // filtering points based on driving direction and rotation
@@ -581,9 +578,6 @@ bool CollisionMonitor::processApproach(
     ostop_triggered_ = false;
     // we only check for collisions and toggle O-stop but not change velocity when current cmd vel is near to zero and already in O-stop
     if (use_vel_to_start_again) {
-      RCLCPP_INFO(
-      get_logger(),
-      "Releasing Ostop after obstacle is cleared");
       return false;
     }
     // Check that currently calculated velocity is safer than
