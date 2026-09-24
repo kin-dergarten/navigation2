@@ -533,7 +533,7 @@ bool CollisionMonitor::processApproach(
   if (ostop_triggered_ && (velocity < vel_to_start_again)) {
     use_vel_to_start_again = true;
     // Applying the direction from prev robot velocity to start again vel
-    if (velocity.isPureRotation()) {
+    if (prev_robot_vel_.isPureRotation()) {
       collision_check_vel = {0.0, 0.0, std::copysign(vel_to_start_again.tw, prev_robot_vel_.tw)};
     } else {
       collision_check_vel = {std::copysign(vel_to_start_again.x, prev_robot_vel_.x), std::copysign(vel_to_start_again.y, prev_robot_vel_.y), 0.0};
