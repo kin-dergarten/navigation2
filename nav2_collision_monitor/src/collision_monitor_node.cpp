@@ -17,6 +17,7 @@
 #include <exception>
 #include <utility>
 #include <functional>
+#include <cmath>
 
 #include "tf2_ros/create_timer_ros.h"
 
@@ -31,7 +32,7 @@ CollisionMonitor::CollisionMonitor(const rclcpp::NodeOptions & options)
 : nav2_util::LifecycleNode("collision_monitor", "", options),
   process_active_(false), robot_action_prev_{DO_NOTHING, {-1.0, -1.0, -1.0}},
   stop_stamp_{0, 0, get_clock()->get_clock_type()}, last_time_processed_{0, 0, get_clock()->get_clock_type()},
-  stop_pub_timeout_(1.0, 0.0), minimal_process_interval_(rclcpp::Duration::from_seconds(0.5))
+  stop_pub_timeout_(1.0, 0.0), minimal_process_interval_(rclcpp::Duration::from_seconds(0.5)), prev_robot_vel_{0.0, 0.0, 0.0}
 {
 }
 
@@ -525,34 +526,59 @@ bool CollisionMonitor::processApproach(
   polygon->updatePolygon();
 
   std::vector<Point> collision_points_filtered = collision_points;
+  const Velocity min_vel = polygon->getRobotMinVelocity();
+  const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
+  Velocity collision_check_vel = velocity;
+  bool use_vel_to_start_again = false;
+  if (ostop_triggered_ && (velocity < vel_to_start_again)) {
+    use_vel_to_start_again = true;
+    // Applying the direction from prev robot velocity to start again vel
+    if (prev_robot_vel_.isPureRotation()) {
+      collision_check_vel = {0.0, 0.0, std::copysign(vel_to_start_again.tw, prev_robot_vel_.tw)};
+    } else {
+      collision_check_vel = {std::copysign(vel_to_start_again.x, prev_robot_vel_.x), std::copysign(vel_to_start_again.y, prev_robot_vel_.y), 0.0};
+    }
+  }
+
   // filtering points based on driving direction and rotation
   if (polygon->isFilterPointsByDriveDirectionEnabled()) {
-    polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, velocity);
+    polygon->filterPointsBasedOnDrivingDirection(collision_points_filtered, collision_check_vel);
   }
   
   // check if the static polygon already in collision
   if (polygon->getPointsInside(collision_points_filtered) > polygon->getMaxPoints()) {
+    ostop_triggered_ = true;
+    prev_robot_vel_ = collision_check_vel;
     robot_action.action_type = EMG_STOP;
     robot_action.req_vel.x = 0.0;
     robot_action.req_vel.y = 0.0;
     robot_action.req_vel.tw = 0.0;
     return true;
   }
-
   // Obtain time before a collision
-  const double collision_time = polygon->getCollisionTime(collision_points_filtered, velocity);
+  const double collision_time = polygon->getCollisionTime(collision_points_filtered, collision_check_vel);
   if (collision_time >= 0.0) {
     // If collision will occurr, reduce robot speed
     const double change_ratio = collision_time / polygon->getTimeBeforeCollision();
-    const Velocity safe_vel = velocity * change_ratio;
-    // Check that currently calculated velocity is less than
-    // the robot min velocity. If yes, stop the shuttle
-    if (safe_vel < polygon->getRobotMinVelocity()) {
+    const Velocity safe_vel = collision_check_vel * change_ratio;
+
+    const bool below_stop_vel    = (safe_vel < min_vel);
+    const bool below_start_again_vel = (safe_vel < vel_to_start_again);
+
+    // If the safe_vel is below min_vel we trigger O stop and we stay in Ostop until we reach vel_to_start_again
+    if (below_stop_vel || (ostop_triggered_ && below_start_again_vel)) {
+      ostop_triggered_ = true;
+      prev_robot_vel_ = collision_check_vel;
       robot_action.action_type = EMG_STOP;
       robot_action.req_vel.x = 0.0;
       robot_action.req_vel.y = 0.0;
       robot_action.req_vel.tw = 0.0;
       return true;
+    }
+    ostop_triggered_ = false;
+    // we only check for collisions and toggle O-stop but not change velocity when current cmd vel is near to zero and already in O-stop
+    if (use_vel_to_start_again) {
+      return false;
     }
     // Check that currently calculated velocity is safer than
     // chosen for previous shapes one
@@ -561,6 +587,8 @@ bool CollisionMonitor::processApproach(
       robot_action.req_vel = safe_vel;
       return true;
     }
+  } else {
+    ostop_triggered_ = false;
   }
 
   return false;

@@ -109,6 +109,11 @@ public:
    */
   Velocity getRobotMinVelocity() const;
   /**
+   * @brief Obtains factor applied to the minimum velocity to decide if the ostop can be released
+   * @return Factor applied to the minimum velocity to decide if the ostop can be released
+   */
+  double getOstopReleaseVelFactor() const;
+  /**
    * @brief Obtains if checks are enabled for this polygon.
    * @return true if enabled
    */
@@ -234,12 +239,17 @@ protected:
   std::unique_ptr<nav2_costmap_2d::FootprintSubscriber> footprint_sub_;
   /// @brief Whether polygon is enabled
   bool enabled_;
-  /// @brief Whether the collision points need to be filtered based on driivng direction
+  /// @brief Whether the collision points need to be filtered based on driving direction
   bool filter_points_by_drive_direction_;
-  /// @brief minimum velocity robot can have
+  /// @brief Offset for filtering the points in the driving direction
+  double filter_points_in_driving_direction_offset_;
+  /// @brief minimum velocity robot can have for approach model
   double robot_min_vel_x_;
   double robot_min_vel_y_;
   double robot_min_vel_tw_;
+
+  /// @brief Factor applied to the minimum velocity to decide if the ostop can be released
+  double ostop_release_vel_factor_;
 
   // Global variables
   /// @brief TF buffer

@@ -169,6 +169,11 @@ Velocity Polygon::getRobotMinVelocity() const
   return {robot_min_vel_x_, robot_min_vel_y_, robot_min_vel_tw_};
 }
 
+double Polygon::getOstopReleaseVelFactor() const
+{
+  return ostop_release_vel_factor_;
+}
+
 void Polygon::getPolygon(std::vector<Point> & poly) const
 {
   poly = poly_;
@@ -239,19 +244,12 @@ double Polygon::getCollisionTime(
 
 void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const
 {
-  constexpr double kLinearVelocityEps = 1e-6;
-  constexpr double kAngularVelocityEps = 1e-6;
   constexpr double kPointEps = 1e-9;
 
   std::vector<Point> filtered_points;
   filtered_points.reserve(points.size());
 
-  const bool is_pure_rotation =
-    (std::fabs(velocity.x) <= kLinearVelocityEps) &&
-    (std::fabs(velocity.y) <= kLinearVelocityEps) &&
-    (std::fabs(velocity.tw) > kAngularVelocityEps);
-
-  if (is_pure_rotation) {
+  if (velocity.isPureRotation()) {
     // Quadrant-based turn filter:
     // CCW (+tw): keep Quadrants I and III  -> x*y > 0 (top-right, bottom-left)
     // CW  (-tw): keep Quadrants II and IV -> x*y < 0 (top-left, bottom-right)
@@ -266,8 +264,14 @@ void Polygon::filterPointsBasedOnDrivingDirection(std::vector<Point>& points, co
   } else {
     for (const Point & point : points) {
       const double inner_product = velocity.x * point.x + velocity.y * point.y;
-      if (inner_product > 0.0) {
-        filtered_points.push_back(point);
+      if (inner_product > 0.0)
+      {
+        const bool is_moving_forward = (velocity.x >= 0.0);
+        if ((is_moving_forward && point.x >= filter_points_in_driving_direction_offset_) ||
+            (!is_moving_forward && point.x <= filter_points_in_driving_direction_offset_))
+        {
+          filtered_points.push_back(point);
+        }
       }
     }
   }
@@ -368,6 +372,14 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
         node, polygon_name_ + ".filter_points_by_drive_direction", rclcpp::ParameterValue(true));
       filter_points_by_drive_direction_ = 
         node->get_parameter(polygon_name_ + ".filter_points_by_drive_direction").as_bool();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".filter_points_in_driving_direction_offset", rclcpp::ParameterValue(0.0));
+      filter_points_in_driving_direction_offset_ =
+        node->get_parameter(polygon_name_ + ".filter_points_in_driving_direction_offset").as_double();
+      nav2_util::declare_parameter_if_not_declared(
+        node, polygon_name_ + ".ostop_release_vel_factor", rclcpp::ParameterValue(0.0));
+      ostop_release_vel_factor_ =
+        node->get_parameter(polygon_name_ + ".ostop_release_vel_factor").as_double();
     }
 
     nav2_util::declare_parameter_if_not_declared(
