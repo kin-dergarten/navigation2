@@ -174,6 +174,11 @@ public:
   void  filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const;
 
   /**
+   *  @brief Use rotation polygon for in place rotation
+  */
+  void useRotationPolygon();
+
+  /**
    * @brief Publishes polygon message into a its own topic
    */
   void publish() const;
@@ -247,6 +252,9 @@ protected:
   double robot_min_vel_x_;
   double robot_min_vel_y_;
   double robot_min_vel_tw_;
+
+  /// @brief Rotation approach footprint
+  std::vector<double> rotation_footprint_;
 
   /// @brief Factor applied to the minimum velocity to decide if the ostop can be released
   double ostop_release_vel_factor_;

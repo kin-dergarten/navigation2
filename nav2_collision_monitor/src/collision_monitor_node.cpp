@@ -523,12 +523,12 @@ bool CollisionMonitor::processApproach(
   const Velocity & velocity,
   Action & robot_action) const
 {
-  polygon->updatePolygon();
-
   std::vector<Point> collision_points_filtered = collision_points;
   const Velocity min_vel = polygon->getRobotMinVelocity();
   const Velocity vel_to_start_again = min_vel * polygon->getOstopReleaseVelFactor();
   Velocity collision_check_vel = velocity;
+
+  // check with at least vel_to_start_again when already stopped
   bool use_vel_to_start_again = false;
   if (ostop_triggered_ && (velocity < vel_to_start_again)) {
     use_vel_to_start_again = true;
@@ -538,6 +538,13 @@ bool CollisionMonitor::processApproach(
     } else {
       collision_check_vel = {std::copysign(vel_to_start_again.x, prev_robot_vel_.x), std::copysign(vel_to_start_again.y, prev_robot_vel_.y), 0.0};
     }
+  }
+
+  // use default polygon for in-place rotation
+  if (collision_check_vel.isPureRotation()) {
+    polygon->useRotationPolygon();
+  } else {
+    polygon->updatePolygon();
   }
 
   // filtering points based on driving direction and rotation
