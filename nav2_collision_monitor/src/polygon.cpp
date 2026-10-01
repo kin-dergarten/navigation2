@@ -382,14 +382,22 @@ bool Polygon::getCommonParameters(std::string & polygon_pub_topic)
         node->get_parameter(polygon_name_ + ".ostop_release_vel_factor").as_double();
       nav2_util::declare_parameter_if_not_declared(
       node, polygon_name_ + ".rotation_footprint", rclcpp::PARAMETER_DOUBLE_ARRAY);
-      rotation_footprint_ =
+      const std::vector<double> rotation_footprint =
         node->get_parameter(polygon_name_ + ".rotation_footprint").as_double_array();
-      if (rotation_footprint_.size() <= 6 || rotation_footprint_.size() % 2 != 0) {
+      if (rotation_footprint.size() <= 6 || rotation_footprint.size() % 2 != 0) {
         RCLCPP_ERROR(
           logger_,
           "[%s]: Polygon has incorrect rotation_footprint description",
           polygon_name_.c_str());
         return false;
+      }
+      rotation_footprint_.clear();
+      rotation_footprint_.resize(rotation_footprint.size() / 2);
+      rotation_polygon_.points.resize(rotation_footprint_.size());
+      for (size_t i = 0; i < rotation_footprint_.size(); ++i) {
+        rotation_footprint_[i] = {rotation_footprint[2 * i], rotation_footprint[2 * i + 1]};
+        rotation_polygon_.points[i].x = rotation_footprint_[i].x;
+        rotation_polygon_.points[i].y = rotation_footprint_[i].y;
       }
     }
 
@@ -480,16 +488,8 @@ bool Polygon::getParameters(std::string & polygon_pub_topic, std::string & footp
 
 void Polygon::useRotationPolygon()
 {
-  poly_.clear();
-  polygon_.points.clear();
-  for (size_t i = 0; i + 1 < rotation_footprint_.size(); i += 2) {
-    Point p{rotation_footprint_[i], rotation_footprint_[i + 1]};
-    poly_.push_back(p);
-    geometry_msgs::msg::Point32 p_s;
-    p_s.x = p.x;
-    p_s.y = p.y;
-    polygon_.points.push_back(p_s);
-  }
+  poly_ = rotation_footprint_;
+  polygon_ = rotation_polygon_;
 }
 
 rcl_interfaces::msg::SetParametersResult
