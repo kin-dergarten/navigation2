@@ -174,6 +174,11 @@ public:
   void  filterPointsBasedOnDrivingDirection(std::vector<Point>& points, const Velocity& velocity) const;
 
   /**
+   *  @brief Use rotation polygon for in place rotation
+  */
+  void useRotationPolygon();
+
+  /**
    * @brief Publishes polygon message into a its own topic
    */
   void publish() const;
@@ -248,6 +253,9 @@ protected:
   double robot_min_vel_y_;
   double robot_min_vel_tw_;
 
+  /// @brief Rotation approach footprint
+  std::vector<Point> rotation_footprint_;
+
   /// @brief Factor applied to the minimum velocity to decide if the ostop can be released
   double ostop_release_vel_factor_;
 
@@ -264,6 +272,8 @@ protected:
   bool visualize_;
   /// @brief Polygon points stored for later publishing
   geometry_msgs::msg::Polygon polygon_;
+  /// @brief Polygon points used for in-place rotation
+  geometry_msgs::msg::Polygon rotation_polygon_;
   /// @brief Polygon publisher for visualization purposes
   rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::PolygonStamped>::SharedPtr polygon_pub_;
 
